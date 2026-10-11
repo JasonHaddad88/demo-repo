@@ -1,0 +1,107 @@
+:root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --panel-2: #f0f2f5;
+    --text: #15181d;
+    --muted: #5d6673;
+    --line: #dde1e7;
+    --accent: #2f6feb;
+    --ok: #1a7f46;
+    --warn: #9a6400;
+    --danger: #b3261e;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216;
+      --panel: #171b21;
+      --panel-2: #1e242c;
+      --text: #e8ebef;
+      --muted: #9aa4b1;
+      --line: #2a313a;
+      --accent: #5b92ff;
+      --ok: #4cc38a;
+      --warn: #e2b53d;
+      --danger: #ff6b60;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline;
+    padding: 18px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  h1 { font-size: 18px; margin: 0; letter-spacing: -.01em; }
+  h1 span { color: var(--muted); font-weight: 400; }
+  .env { color: var(--muted); font-size: 13px; font-family: var(--mono); }
+  main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tabs button {
+    background: transparent; border: 1px solid transparent; color: var(--muted);
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; font-size: 14px;
+  }
+  .tabs button[aria-selected="true"] {
+    background: var(--panel); border-color: var(--line); color: var(--text); font-weight: 600;
+  }
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px; margin-bottom: 14px;
+  }
+  label.inline { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  input[type="text"], input[type="number"] {
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 7px; padding: 7px 9px; font-family: var(--mono); font-size: 13px;
+  }
+  input[type="text"] { min-width: 240px; }
+  button.action, button.primary {
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+    border-radius: 7px; padding: 6px 11px; cursor: pointer; font-size: 13px;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.action:hover:not(:disabled), button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.danger { color: var(--danger); }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: auto;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: var(--panel-2); }
+  td.mono, .mono { font-family: var(--mono); font-size: 13px; }
+  .pill {
+    display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px;
+    border: 1px solid var(--line); color: var(--muted);
+  }
+  .pill.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+  .pill.off { color: var(--muted); }
+  .pill.lock { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+  .pill.exposed { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+  .row-actions { display: flex; gap: 5px; }
+  .empty, .loading { padding: 28px 16px; text-align: center; color: var(--muted); }
+  #flash {
+    position: sticky; top: 0; z-index: 5; margin-bottom: 14px;
+    border-radius: 9px; padding: 10px 14px; font-size: 14px; display: none;
+    border: 1px solid var(--line); background: var(--panel);
+  }
+  #flash.ok { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+  #flash.err { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+  #flash .cmd { display: block; color: var(--muted); font-family: var(--mono); font-size: 12px; margin-top: 4px; }
+  dialog {
+    border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--text);
+    max-width: 440px; padding: 20px;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.5); }
+  dialog h3 { margin: 0 0 8px; font-size: 16px; }
+  dialog p { color: var(--muted); font-size: 14px; }
+  dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .note { color: var(--muted); font-size: 13px; margin: 10px 2px; }
+  @media (max-width: 640px) {
+    main { padding: 14px; }
+    th, td { padding: 8px; }
+  }

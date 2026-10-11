@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portwarden"
+version = "1.0.0"
+description = "Inspect the ports your own machine is listening on and control the services behind them."
+readme = "portwarden/README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["ports", "services", "systemd", "launchd", "localhost", "sysadmin"]
+dependencies = []
+
+[project.scripts]
+portwarden = "portwarden.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/JasonHaddad88/demo-repo"
+
+[tool.setuptools.packages.find]
+include = ["portwarden*"]
+
+[tool.setuptools.package-data]
+portwarden = ["static/*.html", "static/*.css", "static/*.js"]

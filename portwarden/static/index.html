@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>portwarden</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <h1>portwarden <span>· local ports &amp; services</span></h1>
+  <div class="env mono" id="env">connecting…</div>
+</header>
+
+<main>
+  <div id="flash" role="status" aria-live="polite"></div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-ports" aria-selected="true">Ports</button>
+    <button role="tab" id="tab-services" aria-selected="false">Services</button>
+    <button role="tab" id="tab-audit" aria-selected="false">History</button>
+  </div>
+
+  <!-- Ports -->
+  <section id="view-ports">
+    <div class="toolbar">
+      <button class="primary" id="refresh-ports">Refresh</button>
+      <label class="inline" for="do-scan"><input type="checkbox" id="do-scan"> connect-scan</label>
+      <input type="text" id="scan-ports" value="" placeholder="1-1024,3000,8000-8100"
+             aria-label="ports to scan" disabled>
+      <label class="inline"><input type="checkbox" id="only-exposed"> only non-loopback</label>
+      <label class="inline" title="Permit actions on services portwarden protects by default">
+        <input type="checkbox" id="allow-protected"> allow protected
+      </label>
+    </div>
+    <div class="panel" id="ports-panel"><div class="loading">Loading…</div></div>
+    <p class="note">
+      <strong>Exposure</strong> says where a socket can be reached from: <em>loopback</em> is this
+      machine only, <em>all-interfaces</em> is anything that can route to you.
+      Ports with no service behind them are managed outside the service manager (a container,
+      a shell job, or another user's process) — stop those where you started them.
+    </p>
+  </section>
+
+  <!-- Services -->
+  <section id="view-services" hidden>
+    <div class="toolbar">
+      <button class="primary" id="refresh-services">Refresh</button>
+      <input type="text" id="service-filter" placeholder="filter by name…">
+      <label class="inline"><input type="checkbox" id="service-all"> include stopped &amp; disabled</label>
+    </div>
+    <div class="panel" id="services-panel"><div class="loading">Loading…</div></div>
+  </section>
+
+  <!-- Audit -->
+  <section id="view-audit" hidden>
+    <div class="toolbar"><button class="primary" id="refresh-audit">Refresh</button></div>
+    <div class="panel" id="audit-panel"><div class="loading">Loading…</div></div>
+  </section>
+</main>
+
+<dialog id="confirm">
+  <h3 id="confirm-title">Confirm</h3>
+  <p id="confirm-body"></p>
+  <div class="buttons">
+    <button class="action" id="confirm-no">Cancel</button>
+    <button class="primary" id="confirm-yes">Do it</button>
+  </div>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
