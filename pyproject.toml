@@ -16,7 +16,7 @@ dependencies = []
 portwarden = "portwarden.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/JasonHaddad88/demo-repo"
+Homepage = "https://github.com/JasonHaddad88/Vortex-Portwarden"
 
 [tool.setuptools.packages.find]
 include = ["portwarden*"]

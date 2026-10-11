@@ -27,4 +27,6 @@ python3 -m portwarden scan         # the same, plus a TCP connect scan
 python3 -m portwarden serve --open # web dashboard on 127.0.0.1:8787
 ```
 
+On Windows the launcher is `py`, not `python3`: `py -m portwarden scan`.
+
 Full documentation: [`portwarden/README.md`](portwarden/README.md).

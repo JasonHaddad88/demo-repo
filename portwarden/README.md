@@ -28,10 +28,16 @@ $ portwarden disable 5432 --by-port --yes
 ## Install
 
 ```bash
-# from the repository root
-pip install -e .          # gives you the `portwarden` command
-# or run it straight out of the checkout, no install at all:
-python3 -m portwarden ports
+git clone https://github.com/JasonHaddad88/Vortex-Portwarden.git
+cd Vortex-Portwarden
+pip install -e .          # gives you the `portwarden` command anywhere
+```
+
+Or run it straight out of the checkout, with nothing installed:
+
+```bash
+python3 -m portwarden ports     # Linux, macOS
+py -m portwarden ports          # Windows (`python3` is not a Windows command)
 ```
 
 ## What it does
