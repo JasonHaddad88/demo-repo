@@ -81,3 +81,15 @@ Download `VortexView.exe` from the
 or run it with Python: `py -m vortexview`.
 
 Full documentation: [`vortexview/README.md`](vortexview/README.md).
+
+# VortexView (Android)
+
+The same photo sorter on your phone. Open a folder of photos, choose the
+folders to move them into, and tap one: the photo you're on moves there and the
+next one slides in. Swipe between photos, pinch or double-tap to zoom, and Undo
+puts a photo back.
+
+On your phone, download `VortexView.apk` from the
+[`vortexview-android-latest` release](https://github.com/JasonHaddad88/demo-repo/releases/tag/vortexview-android-latest).
+
+Full documentation: [`vortexview-android/README.md`](vortexview-android/README.md).
