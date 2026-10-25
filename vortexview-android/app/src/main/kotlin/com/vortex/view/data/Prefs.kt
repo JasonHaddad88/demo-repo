@@ -6,8 +6,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** The folder you were sorting, the photo you were on, and where photos go. */
-class Prefs(context: Context) {
-    private val prefs = context.getSharedPreferences("vortexview", Context.MODE_PRIVATE)
+class Prefs(context: Context, name: String = "vortexview") {
+    private val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+
+    fun clear() {
+        prefs.edit().clear().commit()
+    }
 
     var folder: Folder?
         get() {

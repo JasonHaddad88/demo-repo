@@ -19,6 +19,10 @@ android {
         targetSdk = 35
         versionCode = buildNumber
         versionName = "1.0.$buildNumber"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Screenshots the device tests save are pulled back into the build folder.
+        testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
 
     signingConfigs {
@@ -76,4 +80,14 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+    // On-device tests: the real app, driven by touch, on an emulator in CI.
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.services:storage:1.5.0")
+    androidTestUtil("androidx.test.services:test-services:1.5.0")
 }

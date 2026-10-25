@@ -10,7 +10,6 @@ import com.vortex.view.core.Folder
 import com.vortex.view.core.MoveException
 import com.vortex.view.core.Names
 import com.vortex.view.core.Photo
-import com.vortex.view.core.Storage
 import java.io.FileNotFoundException
 
 /**
@@ -21,18 +20,17 @@ import java.io.FileNotFoundException
  * Moving is a real move where Android can do one (same storage), and
  * otherwise a copy that is checked before the original is removed.
  */
-class SafStorage(context: Context) : Storage {
+class SafStorage(context: Context) : Places {
     private val resolver = context.applicationContext.contentResolver
 
-    /** Keeps access to a picked folder across restarts. */
-    fun remember(tree: Uri) {
+    override fun remember(tree: Uri) {
         resolver.takePersistableUriPermission(
             tree,
             Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
         )
     }
 
-    fun forget(tree: Uri) {
+    override fun forget(tree: Uri) {
         runCatching {
             resolver.releasePersistableUriPermission(
                 tree,
@@ -41,15 +39,14 @@ class SafStorage(context: Context) : Storage {
         }
     }
 
-    fun hasAccess(folder: Folder): Boolean {
+    override fun hasAccess(folder: Folder): Boolean {
         val tree = Uri.parse(folder.id)
         return resolver.persistedUriPermissions.any { it.uri == tree && it.isReadPermission && it.isWritePermission }
     }
 
-    fun folder(tree: Uri): Folder = Folder(tree.toString(), displayName(tree))
+    override fun folder(tree: Uri): Folder = Folder(tree.toString(), displayName(tree))
 
-    /** Where the folder picker should start: inside [folder]. */
-    fun startingPoint(folder: Folder): Uri = root(folder)
+    override fun startingPoint(folder: Folder): Uri = root(folder)
 
     private fun displayName(tree: Uri): String {
         val name = runCatching {

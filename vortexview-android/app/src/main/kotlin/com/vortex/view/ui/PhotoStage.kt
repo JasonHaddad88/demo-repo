@@ -30,7 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -151,14 +151,22 @@ fun PhotoStage(
                 photoGestures(zoom, swipe, scope, ends = { ends }, step = { direction -> step(direction) })
             },
     ) {
+        // Each photo gets its own slot, keyed by the photo: a slot never shows
+        // a photo other than its own, however the list moves underneath it.
         val offset = swipe.value
         if (offset > 0f && previous != null) {
-            PhotoView(previous, loader, maxSide, null, Modifier.graphicsLayer { translationX = swipe.value - width })
+            key(previous.id) {
+                PhotoView(previous, loader, maxSide, null, Modifier.graphicsLayer { translationX = swipe.value - width })
+            }
         }
         if (offset < 0f && next != null) {
-            PhotoView(next, loader, maxSide, null, Modifier.graphicsLayer { translationX = swipe.value + width })
+            key(next.id) {
+                PhotoView(next, loader, maxSide, null, Modifier.graphicsLayer { translationX = swipe.value + width })
+            }
         }
-        PhotoView(current, loader, maxSide, zoom, Modifier.graphicsLayer { translationX = swipe.value }, onLoaded)
+        key(current.id) {
+            PhotoView(current, loader, maxSide, zoom, Modifier.graphicsLayer { translationX = swipe.value }, onLoaded)
+        }
     }
 }
 
@@ -250,13 +258,13 @@ private fun PhotoView(
     modifier: Modifier,
     onLoaded: (Decoded?) -> Unit = {},
 ) {
-    val result by produceState<Loading>(
-        initialValue = loader.cached(photo)?.let { Loading.Ready(it) } ?: Loading.Waiting,
-        photo.id,
-        maxSide,
-    ) {
-        if (value is Loading.Ready) return@produceState
-        value = try {
+    // Keyed state: a different photo always starts from its own pixels, never the last one's.
+    var result by remember(photo.id, maxSide) {
+        mutableStateOf<Loading>(loader.cached(photo)?.let { Loading.Ready(it) } ?: Loading.Waiting)
+    }
+    LaunchedEffect(photo.id, maxSide) {
+        if (result is Loading.Ready) return@LaunchedEffect
+        result = try {
             Loading.Ready(loader.load(photo, maxSide))
         } catch (e: CancellationException) {
             throw e

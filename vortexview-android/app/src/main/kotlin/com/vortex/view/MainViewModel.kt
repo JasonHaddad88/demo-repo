@@ -11,6 +11,7 @@ import com.vortex.view.core.Folder
 import com.vortex.view.core.Gallery
 import com.vortex.view.core.MoveException
 import com.vortex.view.core.Photo
+import com.vortex.view.data.Places
 import com.vortex.view.data.Prefs
 import com.vortex.view.data.SafStorage
 import com.vortex.view.media.PhotoLoader
@@ -39,10 +40,12 @@ data class UiState(
 data class Message(val text: String, val error: Boolean = false, val undoable: Boolean = false)
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class MainViewModel(app: Application) : AndroidViewModel(app) {
-    val storage = SafStorage(app)
+class MainViewModel @JvmOverloads constructor(
+    app: Application,
+    private val storage: Places = SafStorage(app),
+    private val prefs: Prefs = Prefs(app),
+) : AndroidViewModel(app) {
     val loader = PhotoLoader(app)
-    private val prefs = Prefs(app)
     private val gallery = Gallery(storage)
 
     // The gallery is touched by the file-work thread and, for quick steps, the
