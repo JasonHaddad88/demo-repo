@@ -66,3 +66,18 @@ Install it on your phone from the
 which every push rebuilds.
 
 Full documentation: [`vortexplorer/README.md`](vortexplorer/README.md).
+
+---
+
+# VortexView (Windows)
+
+Also in this repository: **VortexView**, a photo viewer for sorting. Open a
+folder of photos, point at the folder you want them moved into, and press **M**:
+the photo you're on moves there and the next one appears. Up to nine
+destination folders on the number keys, and Ctrl+Z to undo.
+
+Download `VortexView.exe` from the
+[`vortexview-latest` release](https://github.com/JasonHaddad88/demo-repo/releases/tag/vortexview-latest),
+or run it with Python: `py -m vortexview`.
+
+Full documentation: [`vortexview/README.md`](vortexview/README.md).

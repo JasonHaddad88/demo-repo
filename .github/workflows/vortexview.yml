@@ -1,0 +1,75 @@
+name: VortexView for Windows
+
+on:
+  push:
+    paths:
+      - "vortexview/**"
+      - "tests/test_vortexview_*.py"
+      - ".github/workflows/vortexview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vortexview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Pillow, HEIC support and PyInstaller
+        run: python -m pip install --upgrade pip pillow pillow-heif pyinstaller
+
+      - name: Test on real Windows (the window tests open a real window)
+        run: python -m unittest tests.test_vortexview_library tests.test_vortexview_app -v
+
+      - name: Build VortexView.exe
+        run: |
+          python -m vortexview.icon VortexView.ico
+          python -m PyInstaller --noconfirm --onefile --windowed `
+            --name VortexView `
+            --icon VortexView.ico `
+            --paths . `
+            --collect-all pillow_heif `
+            vortexview/VortexView.pyw
+
+      - name: Check the exe starts
+        # A windowed exe that fails to start shows an error box and waits
+        # forever, so give it a deadline instead of trusting it to exit.
+        run: |
+          $p = Start-Process -FilePath dist\VortexView.exe -ArgumentList '--version' -PassThru
+          if (-not $p.WaitForExit(60000)) { $p.Kill(); throw 'VortexView.exe did not exit: it probably failed to start' }
+          if ($p.ExitCode -ne 0) { throw "VortexView.exe exited with code $($p.ExitCode)" }
+          Get-Item dist\VortexView.exe | Select-Object Name, Length | Out-Host
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VortexView-${{ github.run_number }}
+          path: dist/VortexView.exe
+          if-no-files-found: error
+
+      - name: Publish as the "vortexview-latest" pre-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=vortexview-latest
+          NOTES="VortexView build ${GITHUB_RUN_NUMBER}, from ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}.
+
+          Download VortexView.exe and run it — nothing to install. Windows may say it protected your PC because the file isn't signed: click More info, then Run anyway."
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" dist/VortexView.exe \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "VortexView for Windows (latest build)" \
+            --notes "$NOTES"
