@@ -26,10 +26,10 @@ are separate apps.
 1. **Open a folder of photos.** Android's folder picker opens: find the folder
    and tap **Use this folder**, then **Allow**. Camera photos are usually in
    *DCIM › Camera*. SD cards and USB drives are in the picker's menu (☰).
-2. **Choose the folder to move photos into.** It appears as a button at the
-   bottom. Add more with **+ Folder**.
-3. Look at each photo and **tap a folder button** to move it there, or **swipe**
-   to leave it and go to the next one.
+2. **Choose a folder to move photos into** with the button at the bottom. It
+   becomes a big button under *Move this photo to*. Add more with **+ Add folder**.
+3. Look at each photo and **tap a folder's button** to move the photo into it,
+   or **swipe** to leave it and go to the next one.
 
 | Gesture | Does |
 | --- | --- |

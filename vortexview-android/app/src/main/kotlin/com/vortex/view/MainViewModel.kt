@@ -75,7 +75,8 @@ class MainViewModel @JvmOverloads constructor(
         prefs.folder = folder
         prefs.lastPhoto = null
         val count = gallery.photos.size
-        say(if (count == 0) "No photos in ${folder.name}" else "$count photo${if (count == 1) "" else "s"} in ${folder.name}")
+        val found = if (count == 0) "No photos in ${folder.name}" else "$count photo${if (count == 1) "" else "s"} in ${folder.name}"
+        say(if (count > 0 && state.targets.isEmpty()) "$found. Now choose a folder to move them into, below." else found)
     }
 
     /** Sets folder [slot] (or adds one, when [slot] is null) to the folder picked. */
@@ -89,21 +90,19 @@ class MainViewModel @JvmOverloads constructor(
         val targets = state.targets.toMutableList()
         val existing = targets.indexOfFirst { storage.sameFolder(it, folder) }
         if (existing >= 0 && existing != slot) {
-            say("${folder.name} is already folder ${existing + 1}")
+            say("${folder.name} is already in the list")
             return@background
         }
-        val position = if (slot != null && slot < targets.size) {
+        if (slot != null && slot < targets.size) {
             val replaced = targets.set(slot, folder)
             if (!storage.sameFolder(replaced, folder)) release(replaced)
-            slot
         } else {
             if (targets.size >= MAX_TARGETS) throw MoveException("You can have up to $MAX_TARGETS folders — remove one first")
             targets += folder
-            targets.size - 1
         }
         prefs.targets = targets
         state = state.copy(targets = targets)
-        say("Tap “${position + 1}  ${folder.name}” to move the photo you're on there")
+        say("Tap “${folder.name}” below to move the photo you're on into it")
     }
 
     fun removeTarget(slot: Int) = background {

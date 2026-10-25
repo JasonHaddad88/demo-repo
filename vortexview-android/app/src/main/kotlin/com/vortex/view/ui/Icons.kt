@@ -47,6 +47,16 @@ object Icons {
         }
     }
 
+    /** "Move it there." */
+    val MoveTo: ImageVector by lazy {
+        icon("MoveTo") {
+            stroked {
+                moveTo(4f, 12f); lineTo(18f, 12f)
+                moveTo(13f, 7f); lineTo(18f, 12f); lineTo(13f, 17f)
+            }
+        }
+    }
+
     val Add: ImageVector by lazy {
         icon("Add") {
             stroked {

@@ -16,9 +16,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +37,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -286,6 +287,7 @@ private fun Finished(folder: Folder?, canUndo: Boolean, onUndo: () -> Unit, onOp
 // -- bars -------------------------------------------------------------------
 
 private val BarColour = Color.Black.copy(alpha = 0.6f)
+private val PanelColour = Color(0xFF1C1B24)
 
 @Composable
 private fun TopBar(state: UiState, shown: Decoded?, onUndo: () -> Unit, onOpen: () -> Unit, onReload: () -> Unit) {
@@ -341,6 +343,11 @@ private fun TopBar(state: UiState, shown: Decoded?, onUndo: () -> Unit, onOpen: 
     }
 }
 
+/**
+ * The panel at the bottom: a big button for each folder photos go into. Tap
+ * one and the photo on screen moves there.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TargetBar(
     targets: List<Folder>,
@@ -349,39 +356,59 @@ private fun TargetBar(
     onChoose: (Int?) -> Unit,
     onRemove: (Int) -> Unit,
 ) {
-    Surface(color = BarColour, modifier = Modifier.fillMaxWidth()) {
-        Row(
+    Surface(color = PanelColour, modifier = Modifier.fillMaxWidth()) {
+        Column(
             Modifier
                 .windowInsetsPadding(WindowInsets.navigationBars)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(start = 16.dp, end = 8.dp, top = 6.dp, bottom = 14.dp),
         ) {
             if (targets.isEmpty()) {
-                Button(onClick = { onChoose(null) }) {
-                    Icon(Icons.Folder, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Choose the folder to move photos into")
+                Text(
+                    "Where should photos go?",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 10.dp),
+                )
+                Button(
+                    onClick = { onChoose(null) },
+                    modifier = Modifier.fillMaxWidth().padding(end = 8.dp).heightIn(min = 52.dp),
+                ) {
+                    Icon(Icons.Folder, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text("Choose a folder to move photos into", textAlign = TextAlign.Center)
                 }
             } else {
-                Text("Move to", color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.labelMedium)
-                targets.forEachIndexed { slot, folder ->
-                    TargetButton(
-                        slot = slot,
-                        folder = folder,
-                        enabled = !busy,
-                        onMove = { onMove(slot) },
-                        onChange = { onChoose(slot) },
-                        onRemove = { onRemove(slot) },
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Move this photo to",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f),
                     )
+                    if (targets.size < MAX_TARGETS) {
+                        TextButton(onClick = { onChoose(null) }) {
+                            Icon(Icons.Add, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Add folder")
+                        }
+                    }
                 }
-            }
-            if (targets.isNotEmpty() && targets.size < MAX_TARGETS) {
-                TextButton(onClick = { onChoose(null) }) {
-                    Icon(Icons.Add, null, modifier = Modifier.size(18.dp), tint = Color.White)
-                    Spacer(Modifier.width(4.dp))
-                    Text("Folder", color = Color.White)
+                // Every folder on screen at once: they wrap onto more rows rather than scroll away.
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(end = 8.dp),
+                ) {
+                    targets.forEachIndexed { slot, folder ->
+                        TargetButton(
+                            slot = slot,
+                            folder = folder,
+                            enabled = !busy,
+                            onMove = { onMove(slot) },
+                            onChange = { onChoose(slot) },
+                            onRemove = { onRemove(slot) },
+                        )
+                    }
                 }
             }
         }
@@ -396,21 +423,32 @@ private fun TargetButton(slot: Int, folder: Folder, enabled: Boolean, onMove: ()
     val first = slot == 0
     Box {
         Surface(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(16.dp),
             color = if (first) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
             contentColor = if (first) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.combinedClickable(
-                enabled = enabled,
-                onClickLabel = "Move the photo to ${folder.name}",
-                onLongClickLabel = "Change or remove this folder",
-                onClick = onMove,
-                onLongClick = { menu = true },
-            ),
+            modifier = Modifier
+                .heightIn(min = 52.dp)
+                .combinedClickable(
+                    enabled = enabled,
+                    onClickLabel = "Move the photo to ${folder.name}",
+                    onLongClickLabel = "Change or remove this folder",
+                    onClick = onMove,
+                    onLongClick = { menu = true },
+                ),
         ) {
-            Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("${slot + 1}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.width(8.dp))
-                Text(folder.name, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Row(
+                Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.MoveTo, null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    folder.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {

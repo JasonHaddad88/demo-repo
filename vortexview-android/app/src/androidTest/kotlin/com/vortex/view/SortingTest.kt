@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -124,12 +125,13 @@ class SortingTest {
         vm.openFolder(Uri.fromFile(camera))
         waitFor("the folder to open") { vm.state.photos.size == 3 }
         waitForPhoto("red (IMG_1)", ::isRed)
-        compose.onNodeWithText("Choose the folder to move photos into").assertExists()
+        compose.onNodeWithText("Choose a folder to move photos into").assertIsDisplayed()
         save("2-folder-open")
 
         vm.setTarget(Uri.fromFile(keepers), null)
         waitFor("the Keepers button") { vm.state.targets.size == 1 }
-        compose.onNodeWithText("Keepers").assertExists()
+        compose.onNodeWithText("Move this photo to").assertIsDisplayed()
+        compose.onNodeWithText("Keepers").assertIsDisplayed()
         save("3-keepers-added")
 
         // Swiping must change the photo on screen, not just its name.
