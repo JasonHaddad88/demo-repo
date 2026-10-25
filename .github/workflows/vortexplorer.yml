@@ -1,0 +1,68 @@
+name: VortexPlorer APK
+
+on:
+  push:
+    paths:
+      - "vortexplorer/**"
+      - ".github/workflows/vortexplorer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vortexplorer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: vortexplorer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test the shuffle engine, copier and exporter
+        run: ./gradlew :core:test --no-daemon --stacktrace
+
+      - name: Build the APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Name the APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/VortexPlorer-${GITHUB_RUN_NUMBER}.apk"
+          cp app/build/outputs/apk/release/app-release.apk dist/VortexPlorer.apk
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VortexPlorer-${{ github.run_number }}
+          path: vortexplorer/dist/VortexPlorer-*.apk
+          if-no-files-found: error
+
+      - name: Publish as the "vortexplorer-latest" pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=vortexplorer-latest
+          NOTES="VortexPlorer build ${GITHUB_RUN_NUMBER}, from ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}.
+
+          On your phone: download VortexPlorer.apk below, open it, and allow installing from this source when Android asks. Newer builds install over older ones and keep your places and settings."
+          # Recreate it each time so the tag always points at the build's commit.
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" dist/VortexPlorer.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "VortexPlorer (latest build)" \
+            --notes "$NOTES"

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Two arrows chasing each other round a centre: a vortex, and a shuffle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M32,54 A22,22 0 0,1 72,40"
+        android:strokeWidth="6"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M77.5,47.5 L78.5,35 L66,44 Z" />
+    <path
+        android:pathData="M76,54 A22,22 0 0,1 36,68"
+        android:strokeWidth="6"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30.5,60.5 L29.5,73 L42,64 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,49 A5,5 0 1,1 54,59 A5,5 0 1,1 54,49 Z" />
+</vector>
