@@ -33,11 +33,11 @@ class WebDavSource(
     baseUrl: String,
     private val username: String? = null,
     private val password: String? = null,
-    client: OkHttpClient? = null,
 ) : FileSource {
     private val base: HttpUrl = normalizeBase(baseUrl)
     private val baseSegments: List<String> = base.pathSegments.filter { it.isNotEmpty() }
-    private val http: OkHttpClient = client ?: OkHttpClient.Builder()
+    // OkHttp stays an implementation detail: nothing in the public API exposes it.
+    private val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
