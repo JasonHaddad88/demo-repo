@@ -50,3 +50,19 @@ python3 -m vxpress serve --open                # drag-and-drop web interface
 On Windows use `py -m vxpress ...`.
 
 Full documentation: [`vxpress/README.md`](vxpress/README.md).
+
+---
+
+# VortexPlorer (Android)
+
+Also in this repository: **VortexPlorer**, an Android file explorer built
+around shuffling. Browse your phone, an SD card, a USB drive, a Windows share
+or a WebDAV server; shuffle a folder, a selection, or several places at once
+with replayable seeds; copy and move between them; and export a shuffle as
+numbered files for players that go by file name.
+
+Install it on your phone from the
+[`vortexplorer-latest` release](https://github.com/JasonHaddad88/demo-repo/releases/tag/vortexplorer-latest),
+which every push rebuilds.
+
+Full documentation: [`vortexplorer/README.md`](vortexplorer/README.md).
