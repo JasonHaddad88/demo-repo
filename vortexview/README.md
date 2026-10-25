@@ -44,12 +44,21 @@ set VortexView as the *Open with* program for your photos.
 | `→` `←` / mouse wheel / `Space` `Backspace` | Next / previous photo |
 | `Page Up` `Page Down` | Jump 10 photos |
 | `Home` `End` | First / last photo |
-| `F11` or double-click | Full screen (`Esc` to leave) |
+| `Ctrl` + mouse wheel / `+` `−` | Zoom in and out (at the mouse pointer with the wheel) |
+| Double-click | Switch between fit-to-window and 100% at the point you clicked |
+| `Ctrl+1` / `Ctrl+0` | 100% (actual pixels) / fit to the window |
+| Drag | Move around a zoomed-in photo |
+| `F11` or `⛶` | Full screen (`Esc` to leave) |
 | `F5` | Re-read the folder |
 | `Ctrl+O` / `Ctrl+T` | Open a folder / add a destination folder |
 
 Right-click a destination button to change it, open it in Explorer, or remove
 it from the list (removing never touches the folder itself).
+
+**Zooming** goes up to 800%; the `− 100% +` buttons at the top do the same, and
+clicking the percentage goes back to *Fit*. Each new photo starts fitted to the
+window. `Ctrl+1` is 100% zoom, not a move: only the plain number keys move
+photos. A touchpad pinch zooms too.
 
 ## What it's careful about
 
@@ -62,7 +71,11 @@ it from the list (removing never touches the folder itself).
   is the size you see.
 - **Big photos are quick:** JPEGs are decoded straight at screen size, and the
   next and previous photos are prepared in the background while you look.
-- **Small photos aren't blown up** past their real size.
+- **Small photos aren't blown up** past their real size (unless you zoom in).
+- **Zooming in shows the real pixels.** Past screen size, the full-resolution
+  photo is loaded in the background (up to 12000 pixels a side), and only the
+  part on screen is drawn, so even huge photos pan smoothly. Beyond 300% the
+  pixels are shown sharp rather than smoothed.
 - **Locked files are explained**, not silently skipped: a photo open in another
   program stays put and the status bar tells you why.
 - **It remembers** your destination folders, window size, and the folder and
@@ -79,11 +92,13 @@ Settings live in `%APPDATA%\VortexView\settings.json`.
 ## Development
 
 ```
-python -m unittest tests.test_vortexview_library tests.test_vortexview_app
+python -m unittest tests.test_vortexview_library tests.test_vortexview_viewport tests.test_vortexview_app
 ```
 
 `test_vortexview_library` covers scanning, natural order, moving, name
-collisions, undo and settings without any GUI. `test_vortexview_app` opens the
+collisions, undo and settings without any GUI. `test_vortexview_viewport`
+checks the zoom and pan arithmetic (the point under the mouse stays put,
+panning stops at the edges). `test_vortexview_app` opens the
 real window, presses real keys and checks files really moved; on Linux run it
 under `xvfb-run`. The GitHub workflow `.github/workflows/vortexview.yml` runs
 both on Windows and builds `VortexView.exe` with PyInstaller on every push.

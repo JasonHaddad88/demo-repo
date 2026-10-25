@@ -19,11 +19,15 @@ from PIL import Image, ImageOps, ImageTk
 
 from . import __version__
 from .library import MAX_TARGETS, Gallery, MoveError, Settings, heif_supported, same_folder
+from .viewport import Viewport
 
 BACKGROUND = "#1b1b1f"
 TEXT = "#d9d9de"
 MUTED = "#8b8b94"
 ERROR = "#c42b1c"
+# Zooming in loads the photo at full size, up to this many pixels a side
+# (a 12000 x 9000 photo still fits comfortably in memory).
+FULL_SIDE = 12000
 
 
 def _register_heif() -> None:
@@ -84,6 +88,10 @@ class Loader:
     def forget(self, path: Path) -> None:
         self.pending.pop(path, None)
 
+    def full_size(self, path: Path) -> Future:
+        """The photo at its own resolution, for zooming in; not kept."""
+        return self.pool.submit(decode, path, FULL_SIDE)
+
     def close(self) -> None:
         # Wait for a decode in flight: Tk objects must never be freed from a
         # worker thread, and a running decode can trigger garbage collection.
@@ -103,6 +111,12 @@ class App:
         self.shown_path: Path | None = None
         self.resize_job: str | None = None
         self.poll_job: str | None = None
+        # Zoom: the view of the photo on screen, and its full-size copy once loaded.
+        self.view: Viewport | None = None
+        self.full: Image.Image | None = None
+        self.full_future: Future | None = None
+        self.full_job: str | None = None
+        self.drag_from: tuple[int, int] | None = None
 
         root.title("VortexView")
         root.configure(background=BACKGROUND)
@@ -144,6 +158,10 @@ class App:
         self.name_label.pack(side=tk.LEFT, padx=12)
         ttk.Button(top, text="⛶", width=3, command=self.toggle_fullscreen).pack(side=tk.RIGHT)
         ttk.Button(top, text="Undo", command=self.undo).pack(side=tk.RIGHT, padx=6)
+        ttk.Button(top, text="+", width=3, command=lambda: self.zoom_by(1)).pack(side=tk.RIGHT, padx=(0, 10))
+        self.zoom_button = ttk.Button(top, text="Fit", width=6, command=self.zoom_fit)
+        self.zoom_button.pack(side=tk.RIGHT, padx=2)
+        ttk.Button(top, text="−", width=3, command=lambda: self.zoom_by(-1)).pack(side=tk.RIGHT)
 
         self.status = tk.Label(self.root, text="", anchor="w", padx=10, pady=4)
         self.status.pack(side=tk.BOTTOM, fill=tk.X)
@@ -156,7 +174,10 @@ class App:
         self.canvas = tk.Canvas(self.root, background=BACKGROUND, highlightthickness=0)
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas.bind("<Configure>", self._on_resize)
-        self.canvas.bind("<Double-Button-1>", lambda _e: self.toggle_fullscreen())
+        self.canvas.bind("<Double-Button-1>", lambda e: self.zoom_toggle((e.x, e.y)))
+        self.canvas.bind("<ButtonPress-1>", self._drag_start)
+        self.canvas.bind("<B1-Motion>", self._drag)
+        self.canvas.bind("<ButtonRelease-1>", self._drag_end)
 
         self.rebuild_targets()
 
@@ -230,6 +251,17 @@ class App:
         bind("<MouseWheel>", lambda e: self.step(-1 if e.delta > 0 else 1))
         bind("<Button-4>", lambda _e: self.step(-1))
         bind("<Button-5>", lambda _e: self.step(1))
+        # Zoom. Ctrl+1 and Ctrl+0 are more specific than plain 1, so they never move a photo.
+        for key in ("<KeyPress-plus>", "<KeyPress-equal>", "<KP_Add>", "<Control-plus>", "<Control-equal>"):
+            bind(key, lambda _e: self.zoom_by(1))
+        for key in ("<KeyPress-minus>", "<KP_Subtract>", "<Control-minus>"):
+            bind(key, lambda _e: self.zoom_by(-1))
+        bind("<Control-Key-0>", lambda _e: self.zoom_fit())
+        bind("<Control-Key-1>", lambda _e: self.zoom_actual())
+        # Ctrl+wheel (and a touchpad pinch, which Windows sends as Ctrl+wheel) zooms at the pointer.
+        bind("<Control-MouseWheel>", lambda e: self.zoom_by(e.delta / 120, self._pointer()))
+        bind("<Control-Button-4>", lambda _e: self.zoom_by(1, self._pointer()))
+        bind("<Control-Button-5>", lambda _e: self.zoom_by(-1, self._pointer()))
 
     # -- opening ------------------------------------------------------------
 
@@ -368,6 +400,7 @@ class App:
         current = self.gallery.current
         total = len(self.gallery.images)
         if current is None:
+            self._forget_zoom()
             self.shown_path = None
             self.picture = None
             self.position_label.configure(text="")
@@ -393,6 +426,8 @@ class App:
             if neighbour is not None:
                 self.loader.request(neighbour)
 
+        if current != self.shown_path:
+            self._forget_zoom()  # every photo starts fitted to the window
         self.shown_path = current
         if future.done():
             self._display(current, future.result())
@@ -422,6 +457,9 @@ class App:
         if picture.image is None:
             self._message(picture.error, error=True)
         else:
+            if self.view is None:
+                width, height = picture.original_size if all(picture.original_size) else picture.image.size
+                self.view = Viewport(width, height, self.canvas.winfo_width(), self.canvas.winfo_height())
             self._render()
         self._update_details(path, picture)
 
@@ -436,20 +474,117 @@ class App:
             text=f"{self.gallery.index + 1} of {len(self.gallery.images)}   ·   {details}{_human_size(size)}"
         )
 
-    def _render(self) -> None:
-        picture = self.picture
-        if picture is None or picture.image is None:
+    def _render(self, quick: bool = False) -> None:
+        picture, view = self.picture, self.view
+        if picture is None or picture.image is None or view is None:
             return
-        width = max(self.canvas.winfo_width(), 1)
-        height = max(self.canvas.winfo_height(), 1)
-        image = picture.image
-        # Fit to the window, but never blow a small picture up past its own size.
-        scale = min(width / image.width, height / image.height, 1.0)
-        size = (max(1, round(image.width * scale)), max(1, round(image.height * scale)))
-        shown = image if size == image.size else image.resize(size, Image.LANCZOS)
+        view.resize(self.canvas.winfo_width(), self.canvas.winfo_height())
+        # The screen-sized copy is sharp enough (and quicker) until zoomed in past it.
+        sharp_enough = view.scale <= picture.image.width / view.image_w * 1.01
+        source = self.full if self.full is not None and not sharp_enough else picture.image
+        box, size, origin = view.layout()
+        # Source pixels per photo pixel: below 1 for the screen-sized copy.
+        kx = source.width / view.image_w
+        ky = source.height / view.image_h
+        if not view.zoomed and size == source.size:
+            shown = source
+        else:
+            # Only the visible part is resized, so deep zoom stays quick on huge photos.
+            if view.scale / kx >= 3:
+                resample = Image.NEAREST  # deep zoom: show crisp pixels, not a blur
+            elif quick:
+                resample = Image.BILINEAR  # while dragging, keep up with the mouse
+            else:
+                resample = Image.LANCZOS
+            shown = source.resize(size, resample, box=(box[0] * kx, box[1] * ky, box[2] * kx, box[3] * ky))
         self.photo = ImageTk.PhotoImage(shown)
         self.canvas.delete("all")
-        self.canvas.create_image(width // 2, height // 2, image=self.photo, anchor="center")
+        self.canvas.create_image(origin[0], origin[1], image=self.photo, anchor="nw")
+        self.canvas.configure(cursor="fleur" if view.zoomed else "")
+        self.zoom_button.configure(text=f"{view.percent}%" if view.zoomed else "Fit")
+        if self.full is None and not sharp_enough and picture.image.width < view.image_w:
+            self._load_full_size()
+
+    # -- zoom ---------------------------------------------------------------
+
+    def _zoomable(self) -> bool:
+        return self.view is not None and self.picture is not None and self.picture.image is not None
+
+    def zoom_by(self, steps: float, anchor: tuple[float, float] | None = None) -> None:
+        if self._zoomable():
+            self.view.zoom_by(steps, anchor)
+            self._render()
+
+    def zoom_fit(self) -> None:
+        if self._zoomable():
+            self.view.reset()
+            self._render()
+
+    def zoom_actual(self) -> None:
+        if self._zoomable():
+            self.view.set_zoom(1.0)
+            self._render()
+
+    def zoom_toggle(self, anchor: tuple[float, float] | None = None) -> None:
+        if self._zoomable():
+            self.view.toggle_actual_size(anchor)
+            self._render()
+
+    def _pointer(self) -> tuple[float, float] | None:
+        """Where the mouse is on the photo area, or None if it's elsewhere."""
+        x = self.canvas.winfo_pointerx() - self.canvas.winfo_rootx()
+        y = self.canvas.winfo_pointery() - self.canvas.winfo_rooty()
+        inside = 0 <= x < self.canvas.winfo_width() and 0 <= y < self.canvas.winfo_height()
+        return (x, y) if inside else None
+
+    def _drag_start(self, event: tk.Event) -> None:
+        self.drag_from = (event.x, event.y)
+
+    def _drag(self, event: tk.Event) -> None:
+        if self.drag_from is None or not self._zoomable() or not self.view.zoomed:
+            return
+        self.view.pan(event.x - self.drag_from[0], event.y - self.drag_from[1])
+        self.drag_from = (event.x, event.y)
+        self._render(quick=True)
+
+    def _drag_end(self, _event: tk.Event) -> None:
+        if self.drag_from is not None and self._zoomable() and self.view.zoomed:
+            self._render()  # the sharp version, now the mouse has stopped
+        self.drag_from = None
+
+    def _load_full_size(self) -> None:
+        """Zoomed in past the screen-sized copy: decode the original in the background."""
+        path = self.shown_path
+        if self.full_future is not None or path is None:
+            return
+        future = self.loader.full_size(path)
+        self.full_future = future
+
+        def check() -> None:
+            self.full_job = None
+            if self.full_future is not future:
+                return  # moved on to another photo
+            if not future.done():
+                self.full_job = self.root.after(30, check)
+                return
+            full = future.result()
+            if full.image is not None:
+                self.full = full.image
+                self._render()
+
+        self.full_job = self.root.after(30, check)
+
+    def _forget_zoom(self) -> None:
+        self.view = None
+        self.full = None
+        if self.full_future is not None:
+            self.full_future.cancel()
+            self.full_future = None
+        if self.full_job is not None:
+            self.root.after_cancel(self.full_job)
+            self.full_job = None
+        self.canvas.configure(cursor="")
+        self.zoom_button.configure(text="Fit")
 
     def _message(self, text: str, error: bool = False, small: bool = False) -> None:
         self.canvas.delete("all")
@@ -506,6 +641,7 @@ class App:
         self.settings.save(self.settings_file)
         if self.poll_job is not None:
             self.root.after_cancel(self.poll_job)
+        self._forget_zoom()
         self.loader.close()
         self.photo = None
         self.icon = None

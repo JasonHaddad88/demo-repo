@@ -30,7 +30,7 @@ jobs:
         run: python -m pip install --upgrade pip pillow pillow-heif pyinstaller
 
       - name: Test on real Windows (the window tests open a real window)
-        run: python -m unittest tests.test_vortexview_library tests.test_vortexview_app -v
+        run: python -m unittest tests.test_vortexview_library tests.test_vortexview_viewport tests.test_vortexview_app -v
 
       - name: Build VortexView.exe
         run: |

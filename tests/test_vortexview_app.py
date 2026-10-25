@@ -166,6 +166,111 @@ class WindowTests(unittest.TestCase):
         texts = [self.app.canvas.itemcget(item, "text") for item in self.app.canvas.find_all()]
         self.assertTrue(any("All done" in text for text in texts), texts)
 
+    # -- zoom -------------------------------------------------------------
+
+    def wait_for_full_size(self, rounds=150):
+        for _ in range(rounds):
+            self.root.update()
+            if self.app.full is not None:
+                return
+            self.root.after(20)
+        self.fail("the full-size photo never loaded")
+
+    def big_photo(self):
+        """A photo much bigger than the screen, with a 1-pixel grid to zoom into."""
+        image = Image.new("RGB", (5000, 3000), (90, 90, 90))
+        for x in range(0, 5000, 2):
+            image.paste((255, 255, 255), (x, 0, x + 1, 3000))
+        image.save(self.photos / "IMG_0.png")
+        self.app.reload()
+        self.app.jump(0)
+        self.settle(rounds=300)  # a big PNG can't be decoded at a reduced size
+        self.assertEqual(self.app.gallery.current.name, "IMG_0.png")
+        self.assertLess(self.app.picture.image.width, 5000, "should start with a screen-sized copy")
+
+    def test_plus_and_minus_zoom_and_ctrl_0_fits(self):
+        fitted = self.app.photo.width()
+        self.assertEqual(self.app.zoom_button.cget("text"), "Fit")
+        self.press("plus")
+        self.assertTrue(self.app.view.zoomed)
+        self.assertEqual(self.app.zoom_button.cget("text"), f"{self.app.view.percent}%")
+        self.assertEqual(self.app.canvas.cget("cursor"), "fleur")
+        self.press("minus")
+        self.assertFalse(self.app.view.zoomed)
+        self.press("<KeyPress-equal>")
+        self.press("<Control-Key-0>")
+        self.assertFalse(self.app.view.zoomed)
+        self.assertEqual(self.app.photo.width(), fitted)
+        self.assertEqual(self.app.zoom_button.cget("text"), "Fit")
+
+    def test_ctrl_1_is_100_percent_and_never_moves_the_photo(self):
+        self.press("<Control-Key-1>")
+        self.assertEqual(self.app.view.scale, 1.0)
+        self.assertTrue((self.photos / "IMG_1.jpg").exists(), "Ctrl+1 moved the photo")
+        self.assertEqual(self.app.gallery.current.name, "IMG_1.jpg")
+        canvas = (self.app.canvas.winfo_width(), self.app.canvas.winfo_height())
+        self.assertEqual((self.app.photo.width(), self.app.photo.height()), (min(1200, canvas[0]), min(800, canvas[1])))
+        self.press("1")  # plain 1 still moves it
+        self.assertTrue((self.keep / "IMG_1.jpg").exists())
+
+    def test_ctrl_wheel_zooms_but_the_plain_wheel_still_flips(self):
+        self.root.event_generate("<Control-MouseWheel>", delta=120)
+        self.settle()
+        self.assertTrue(self.app.view.zoomed)
+        self.assertEqual(self.app.gallery.current.name, "IMG_1.jpg")
+        self.root.event_generate("<MouseWheel>", delta=-120)
+        self.settle()
+        self.assertEqual(self.app.gallery.current.name, "IMG_2.jpg")
+
+    def test_another_photo_starts_fitted(self):
+        self.press("<Control-Key-1>")
+        self.press("Right")
+        self.assertIsNotNone(self.app.view)
+        self.assertFalse(self.app.view.zoomed)
+        self.assertEqual(self.app.zoom_button.cget("text"), "Fit")
+
+    def double_click(self, x, y, time):
+        # Tk can't be sent a double-click as such: two quick clicks make one.
+        for t in (time, time + 50):
+            self.app.canvas.event_generate("<ButtonPress-1>", x=x, y=y, time=t)
+            self.app.canvas.event_generate("<ButtonRelease-1>", x=x, y=y, time=t + 10)
+        self.settle()
+
+    def test_double_click_toggles_100_percent(self):
+        self.double_click(100, 100, time=10_000)
+        self.assertEqual(self.app.view.scale, 1.0)
+        self.double_click(100, 100, time=20_000)
+        self.assertFalse(self.app.view.zoomed)
+
+    def test_dragging_pans_a_zoomed_photo(self):
+        self.big_photo()
+        self.press("<Control-Key-1>")
+        before = self.app.view.cx
+        self.app.canvas.event_generate("<ButtonPress-1>", x=500, y=300)
+        self.app.canvas.event_generate("<B1-Motion>", x=300, y=300)
+        self.app.canvas.event_generate("<ButtonRelease-1>", x=300, y=300)
+        self.root.update()
+        self.assertAlmostEqual(self.app.view.cx, before + 200)
+
+    def test_zooming_in_loads_the_full_size_photo(self):
+        self.big_photo()
+        drawn = []
+        real = app_module.ImageTk.PhotoImage
+
+        def capture(image, *args, **kwargs):
+            drawn.append(image)
+            return real(image, *args, **kwargs)
+
+        with mock.patch.object(app_module.ImageTk, "PhotoImage", side_effect=capture):
+            self.press("<Control-Key-1>")
+            self.wait_for_full_size()
+        self.assertEqual(self.app.full.size, (5000, 3000))
+        # At 100% every other column is white: the real pixels, not a blurred copy.
+        row = [drawn[-1].getpixel((x, 10))[0] for x in range(20)]
+        self.assertEqual(sorted(set(row)), [90, 255], row)
+        self.press("Right")
+        self.assertIsNone(self.app.full, "the full-size copy should be dropped on the next photo")
+
     # -- folders ----------------------------------------------------------
 
     def test_with_no_folder_set_m_asks_for_one_then_moves(self):
