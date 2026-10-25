@@ -104,6 +104,10 @@ class PhotoLoader(context: Context) {
                 decoder.setOnPartialImageListener { true } // show what there is of a damaged file
             }
             bitmap.setHasMipMap(true)
+            // Belt and braces: trust the pixels for which way round the photo is.
+            if ((bitmap.width > bitmap.height) != (width > height) && bitmap.width != bitmap.height) {
+                width = height.also { height = width }
+            }
             return Decoded(bitmap.asImageBitmap(), width, height)
         }
 
