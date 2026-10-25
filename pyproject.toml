@@ -3,23 +3,37 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "portwarden"
-version = "1.0.0"
-description = "Inspect the ports your own machine is listening on and control the services behind them."
-readme = "portwarden/README.md"
+name = "vortex-tools"
+version = "1.1.0"
+description = "Vortex local tools: portwarden (ports and services) and VXpress (video downloads and mp3 conversion)."
+readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-keywords = ["ports", "services", "systemd", "launchd", "localhost", "sysadmin"]
+keywords = [
+  "ports",
+  "services",
+  "systemd",
+  "launchd",
+  "localhost",
+  "sysadmin",
+  "video",
+  "download",
+  "mp3",
+  "ffmpeg",
+  "yt-dlp",
+]
 dependencies = []
 
 [project.scripts]
 portwarden = "portwarden.cli:main"
+vxpress = "vxpress.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/JasonHaddad88/Vortex-Portwarden"
 
 [tool.setuptools.packages.find]
-include = ["portwarden*"]
+include = ["portwarden*", "vxpress*"]
 
 [tool.setuptools.package-data]
 portwarden = ["static/*.html", "static/*.css", "static/*.js"]
+vxpress = ["static/*.html", "static/*.css", "static/*.js"]

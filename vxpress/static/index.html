@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Vortex VXpress</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <h1>Vortex <span>VXpress</span></h1>
+  <div class="tools" id="tools">checking tools…</div>
+</header>
+
+<main>
+  <div id="flash" role="status" aria-live="polite"></div>
+
+  <section class="card" id="dropzone">
+    <div class="row">
+      <input type="text" id="target" spellcheck="false" autocomplete="off"
+             placeholder="Paste a video link, or the path to a file on this PC">
+      <button class="primary" id="start">Start</button>
+    </div>
+
+    <div class="row modes" role="radiogroup" aria-label="What to produce">
+      <label><input type="radio" name="kind" value="mp3" checked> Convert to <strong>.mp3</strong></label>
+      <label><input type="radio" name="kind" value="video"> Download the <strong>video</strong></label>
+      <label class="spacer"><input type="checkbox" id="playlist"> whole playlist</label>
+      <button class="ghost" id="check">Check link</button>
+    </div>
+
+    <div class="row options" id="opts-mp3">
+      <label class="field">Quality
+        <select id="bitrate"></select>
+      </label>
+      <label class="field">Trim from
+        <input type="text" id="start-at" placeholder="0:30" size="6">
+      </label>
+      <label class="field">to
+        <input type="text" id="end-at" placeholder="2:45" size="6">
+      </label>
+      <label class="check"><input type="checkbox" id="thumbnail"> cover art</label>
+      <label class="check"><input type="checkbox" id="metadata" checked> keep tags</label>
+    </div>
+
+    <div class="row options" id="opts-video" hidden>
+      <label class="field">Max height
+        <select id="max-height">
+          <option value="">best available</option>
+          <option value="2160">2160p</option>
+          <option value="1440">1440p</option>
+          <option value="1080" selected>1080p</option>
+          <option value="720">720p</option>
+          <option value="480">480p</option>
+        </select>
+      </label>
+      <label class="field">Container
+        <select id="container">
+          <option value="mp4" selected>mp4</option>
+          <option value="mkv">mkv</option>
+          <option value="webm">webm</option>
+          <option value="any">whatever the site gives</option>
+        </select>
+      </label>
+    </div>
+
+    <p class="hint" id="drop-hint">…or drop a video file anywhere on this page to convert it.</p>
+    <div class="upload" id="upload" hidden>
+      <div class="bar"><div class="fill" id="upload-fill"></div></div>
+      <span id="upload-label">uploading…</span>
+    </div>
+  </section>
+
+  <div id="preview" class="card preview" hidden></div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-queue" aria-selected="true">Queue</button>
+    <button role="tab" id="tab-history" aria-selected="false">History</button>
+    <button class="ghost right" id="clear">Clear finished</button>
+  </div>
+
+  <section id="view-queue"><div class="empty">Nothing queued yet.</div></section>
+  <section id="view-history" hidden><div class="empty">Loading…</div></section>
+
+  <p class="footnote">
+    Files land in the folders shown above. VXpress asks sites only for what they serve to an
+    ordinary visitor — it does not sign in, and it cannot open DRM-protected streams. Download
+    only what you have the right to keep.
+  </p>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

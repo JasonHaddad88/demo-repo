@@ -30,3 +30,23 @@ python3 -m portwarden serve --open # web dashboard on 127.0.0.1:8787
 On Windows the launcher is `py`, not `python3`: `py -m portwarden scan`.
 
 Full documentation: [`portwarden/README.md`](portwarden/README.md).
+
+---
+
+# Vortex VXpress
+
+Also in this repository: **VXpress**, which downloads the video behind a link,
+or turns any video — a link or a file already on this PC — into an `.mp3`. It
+drives yt-dlp and ffmpeg; VXpress itself needs no Python packages.
+
+```bash
+python3 -m vxpress doctor                      # are yt-dlp and ffmpeg installed?
+python3 -m vxpress mp3 "https://example.com/watch?v=abc"
+python3 -m vxpress mp3 "~/Videos/lecture.mkv" --start 1:30
+python3 -m vxpress get "https://example.com/watch?v=abc" --max-height 1080
+python3 -m vxpress serve --open                # drag-and-drop web interface
+```
+
+On Windows use `py -m vxpress ...`.
+
+Full documentation: [`vxpress/README.md`](vxpress/README.md).

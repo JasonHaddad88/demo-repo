@@ -1,0 +1,126 @@
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --sunk: #eef0f4;
+  --text: #15181d;
+  --muted: #5d6673;
+  --line: #dde1e7;
+  --accent: #5b3df5;
+  --accent-text: #ffffff;
+  --ok: #1a7f46;
+  --warn: #9a6400;
+  --danger: #b3261e;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1014;
+    --card: #171a20;
+    --sunk: #1f242c;
+    --text: #e8ebef;
+    --muted: #9aa4b1;
+    --line: #2a313a;
+    --accent: #8b6cff;
+    --accent-text: #0e1014;
+    --ok: #4cc38a;
+    --warn: #e2b53d;
+    --danger: #ff6b60;
+  }
+}
+* { box-sizing: border-box; }
+/* `.row` sets display:flex, which would otherwise beat the user agent's
+   [hidden] rule and leave hidden option rows on screen. */
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+body.dragging { outline: 3px dashed var(--accent); outline-offset: -10px; }
+header {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: baseline; justify-content: space-between;
+  padding: 16px 22px; border-bottom: 1px solid var(--line); background: var(--card);
+}
+h1 { font-size: 19px; margin: 0; letter-spacing: -.02em; font-weight: 700; }
+h1 span { color: var(--accent); }
+.tools { color: var(--muted); font-size: 13px; font-family: var(--mono); }
+.tools b { color: var(--text); font-weight: 600; }
+.tools .bad { color: var(--danger); }
+main { max-width: 980px; margin: 0 auto; padding: 22px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px; margin-bottom: 16px;
+}
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row + .row { margin-top: 12px; }
+input[type="text"], select {
+  background: var(--sunk); border: 1px solid var(--line); color: var(--text);
+  border-radius: 8px; padding: 9px 11px; font-size: 14px; font-family: inherit;
+}
+#target { flex: 1 1 420px; font-family: var(--mono); font-size: 13px; }
+select { font-size: 13px; }
+button {
+  border-radius: 8px; padding: 9px 16px; font-size: 14px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--sunk); color: var(--text); font-family: inherit;
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+button.ghost { background: transparent; color: var(--muted); }
+button.small { padding: 5px 10px; font-size: 13px; }
+button:hover:not(:disabled) { filter: brightness(1.07); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.modes label, .check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+.modes label strong { color: var(--text); }
+.modes .spacer { margin-left: auto; }
+.field { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
+.options { padding-top: 12px; border-top: 1px dashed var(--line); }
+.hint { color: var(--muted); font-size: 13px; margin: 12px 0 0; }
+.upload { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.bar { flex: 1; height: 8px; background: var(--sunk); border-radius: 99px; overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--accent); transition: width .2s linear; }
+.card.table-wrap { padding: 0; overflow: auto; }
+.preview { font-size: 14px; }
+.preview h3 { margin: 0 0 6px; font-size: 15px; }
+.preview .meta { color: var(--muted); font-size: 13px; font-family: var(--mono); }
+.tabs { display: flex; gap: 6px; align-items: center; margin: 4px 2px 12px; }
+.tabs button[role="tab"] {
+  background: transparent; border-color: transparent; color: var(--muted); border-radius: 99px;
+}
+.tabs button[role="tab"][aria-selected="true"] {
+  background: var(--card); border-color: var(--line); color: var(--text); font-weight: 600;
+}
+.tabs .right { margin-left: auto; }
+.job {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px; margin-bottom: 10px;
+}
+.job header { all: unset; display: flex; gap: 10px; align-items: baseline; justify-content: space-between; }
+.job .name { font-weight: 600; word-break: break-all; }
+.job .sub { color: var(--muted); font-size: 12.5px; font-family: var(--mono); word-break: break-all; }
+.job .actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.job .bar { margin-top: 10px; }
+.job.failed { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.job.done { border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.pill {
+  display: inline-block; padding: 1px 9px; border-radius: 99px; font-size: 12px;
+  border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+}
+.pill.run { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.pill.done { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.pill.failed { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.pill.cancelled { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.empty { color: var(--muted); text-align: center; padding: 26px; font-size: 14px; }
+#flash {
+  display: none; border: 1px solid var(--line); background: var(--card);
+  border-radius: 10px; padding: 11px 14px; margin-bottom: 14px; font-size: 14px;
+}
+#flash.ok { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+#flash.err { border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+#flash pre { margin: 6px 0 0; white-space: pre-wrap; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+td.mono { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+.footnote { color: var(--muted); font-size: 12.5px; margin-top: 18px; }
+@media (max-width: 620px) {
+  main { padding: 14px; }
+  .modes .spacer { margin-left: 0; }
+}
