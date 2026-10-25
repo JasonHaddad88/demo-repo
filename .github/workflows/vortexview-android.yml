@@ -1,0 +1,68 @@
+name: VortexView for Android
+
+on:
+  push:
+    paths:
+      - "vortexview-android/**"
+      - ".github/workflows/vortexview-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vortexview-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: vortexview-android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test moving, undo and the zoom arithmetic
+        run: ./gradlew :core:test --no-daemon --stacktrace
+
+      - name: Build the APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Name the APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/VortexView-${GITHUB_RUN_NUMBER}.apk"
+          cp app/build/outputs/apk/release/app-release.apk dist/VortexView.apk
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VortexView-Android-${{ github.run_number }}
+          path: vortexview-android/dist/VortexView-*.apk
+          if-no-files-found: error
+
+      - name: Publish as the "vortexview-android-latest" pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=vortexview-android-latest
+          NOTES="VortexView for Android, build ${GITHUB_RUN_NUMBER}, from ${GITHUB_REF_NAME} at ${GITHUB_SHA::7}.
+
+          On your phone: download VortexView.apk below, open it, and allow installing from this source when Android asks. Newer builds install over older ones and keep your folders and settings."
+          # Recreate it each time so the tag always points at the build's commit.
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" dist/VortexView.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "VortexView for Android (latest build)" \
+            --notes "$NOTES"
