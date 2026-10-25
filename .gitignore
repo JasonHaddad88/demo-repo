@@ -6,3 +6,11 @@ dist/
 .venv/
 venv/
 .coverage
+
+# Android / Gradle (vortexplorer)
+.gradle/
+.kotlin/
+local.properties
+.idea/
+*.iml
+captures/
