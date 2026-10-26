@@ -22,6 +22,15 @@ class Prefs(context: Context, name: String = "vortexview") {
             prefs.edit().putString("folder_id", value?.id).putString("folder_name", value?.name).apply()
         }
 
+    /** The seed of the shuffle you were in, or null for name order. */
+    var shuffleSeed: Long?
+        get() = if (prefs.contains("shuffle_seed")) prefs.getLong("shuffle_seed", 0) else null
+        set(value) {
+            val edit = prefs.edit()
+            if (value == null) edit.remove("shuffle_seed") else edit.putLong("shuffle_seed", value)
+            edit.apply()
+        }
+
     var lastPhoto: String?
         get() = prefs.getString("last_photo", null)
         set(value) = prefs.edit().putString("last_photo", value).apply()

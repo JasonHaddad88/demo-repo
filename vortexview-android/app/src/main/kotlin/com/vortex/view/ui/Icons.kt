@@ -57,6 +57,17 @@ object Icons {
         }
     }
 
+    val Shuffle: ImageVector by lazy {
+        icon("Shuffle") {
+            stroked {
+                moveTo(3f, 7f); lineTo(8f, 7f); lineTo(16f, 17f); lineTo(21f, 17f)
+                moveTo(18f, 14f); lineTo(21f, 17f); lineTo(18f, 20f)
+                moveTo(3f, 17f); lineTo(8f, 17f); lineTo(16f, 7f); lineTo(21f, 7f)
+                moveTo(18f, 4f); lineTo(21f, 7f); lineTo(18f, 10f)
+            }
+        }
+    }
+
     val Add: ImageVector by lazy {
         icon("Add") {
             stroked {

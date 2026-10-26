@@ -208,3 +208,105 @@ class NamesTest {
         assertEquals(".x (2)", Names.unique(".x", setOf(".x")))
     }
 }
+
+class ShuffleTest {
+    @get:Rule
+    val temp = TemporaryFolder()
+
+    private val storage = FileStorage()
+    private val names = (1..40).map { "IMG_$it.jpg" }
+
+    private fun camera(): Folder {
+        val dir = File(temp.root, "Camera").apply { mkdirs() }
+        names.forEach { File(dir, it).writeText(it) }
+        return storage.folder(dir)
+    }
+
+    private fun Gallery.names() = photos.map { it.name }
+
+    @Test
+    fun `shuffling changes the order and starts from the top`() {
+        val gallery = Gallery(storage)
+        gallery.open(camera())
+        gallery.go(5)
+        gallery.shuffle(seed = 1)
+        assertEquals(names.toSet(), gallery.names().toSet(), "the same photos, no more, no fewer")
+        assertTrue(gallery.names() != names, "a shuffle of 40 should not come out in name order")
+        assertEquals(0, gallery.index)
+        assertEquals(Order.Shuffled(1), gallery.order)
+    }
+
+    @Test
+    fun `the same seed gives the same order, another seed another`() {
+        val a = Gallery(storage).apply { open(camera()); shuffle(seed = 7) }
+        val b = Gallery(storage).apply { open(camera()); shuffle(seed = 7) }
+        val c = Gallery(storage).apply { open(camera()); shuffle(seed = 8) }
+        assertEquals(a.names(), b.names())
+        assertTrue(a.names() != c.names())
+    }
+
+    @Test
+    fun `moving a photo out leaves the rest of the shuffle as it was`() {
+        val gallery = Gallery(storage)
+        gallery.open(camera())
+        gallery.shuffle(seed = 3)
+        val before = gallery.names()
+        gallery.go(4)
+        val moving = gallery.current!!.name
+        gallery.moveCurrent(storage.folder(File(temp.root, "Keepers").apply { mkdirs() }))
+        assertEquals(before - moving, gallery.names())
+        assertEquals(before[5], gallery.current?.name, "the next photo in the shuffle takes its place")
+
+        gallery.undo()
+        assertEquals(before, gallery.names(), "undo puts it back in its place in the shuffle")
+        assertEquals(moving, gallery.current?.name)
+    }
+
+    @Test
+    fun `reopening with the same seed carries on where you were`() {
+        val folder = camera()
+        val first = Gallery(storage).apply { open(folder); shuffle(seed = 11); go(9) }
+        val again = Gallery(storage).apply { useOrder(Order.Shuffled(11)); open(folder, startAt = first.current?.name) }
+        assertEquals(first.names(), again.names())
+        assertEquals(9, again.index)
+    }
+
+    @Test
+    fun `a photo added later lands somewhere in the shuffle, and the rest keep their order`() {
+        val folder = camera()
+        val gallery = Gallery(storage)
+        gallery.open(folder)
+        gallery.shuffle(seed = 5)
+        val before = gallery.names()
+        File(File(folder.id), "IMG_new.jpg").writeText("new")
+        gallery.reload()
+        assertEquals(before, gallery.names() - "IMG_new.jpg")
+        assertTrue("IMG_new.jpg" in gallery.names())
+    }
+
+    @Test
+    fun `back to name order stays on the same photo`() {
+        val gallery = Gallery(storage)
+        gallery.open(camera())
+        gallery.shuffle(seed = 2)
+        gallery.go(3)
+        val looking = gallery.current?.name
+        gallery.sortByName()
+        assertEquals(names.sortedWith(Names.naturalOrder), gallery.names())
+        assertEquals(looking, gallery.current?.name)
+        assertEquals(Order.ByName, gallery.order)
+    }
+
+    @Test
+    fun `a shuffle is a fair one`() {
+        // Where IMG_1 lands over many shuffles: every position should come up.
+        val gallery = Gallery(storage)
+        gallery.open(camera())
+        val seen = HashSet<Int>()
+        for (seed in 0L until 2000L) {
+            gallery.shuffle(seed)
+            seen += gallery.names().indexOf("IMG_1.jpg")
+        }
+        assertEquals(names.size, seen.size, "IMG_1 should be able to land anywhere")
+    }
+}

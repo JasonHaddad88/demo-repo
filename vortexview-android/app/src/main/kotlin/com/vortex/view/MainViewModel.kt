@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.vortex.view.core.Folder
 import com.vortex.view.core.Gallery
 import com.vortex.view.core.MoveException
+import com.vortex.view.core.Order
 import com.vortex.view.core.Photo
 import com.vortex.view.data.Places
 import com.vortex.view.data.Prefs
@@ -33,11 +34,18 @@ data class UiState(
     val targets: List<Folder> = emptyList(),
     val canUndo: Boolean = false,
     val busy: Boolean = false,
+    val shuffled: Boolean = false,
 ) {
     val current: Photo? get() = photos.getOrNull(index)
 }
 
-data class Message(val text: String, val error: Boolean = false, val undoable: Boolean = false)
+/** The button a message can offer. */
+enum class Action(val label: String) {
+    UNDO("Undo"),
+    NAME_ORDER("Name order"),
+}
+
+data class Message(val text: String, val error: Boolean = false, val action: Action? = null)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel @JvmOverloads constructor(
@@ -62,7 +70,11 @@ class MainViewModel @JvmOverloads constructor(
     init {
         val folder = prefs.folder
         if (folder != null && storage.hasAccess(folder)) {
-            background { gallery.open(folder, startAt = prefs.lastPhoto) }
+            background {
+                // Carry on in the same order: a shuffle with the same seed comes out the same.
+                prefs.shuffleSeed?.let { gallery.useOrder(Order.Shuffled(it)) }
+                gallery.open(folder, startAt = prefs.lastPhoto)
+            }
         }
     }
 
@@ -131,7 +143,7 @@ class MainViewModel @JvmOverloads constructor(
         loader.forget(move.photo)
         val note = if (move.renamed) " as ${move.moved.name}" else ""
         val left = gallery.photos.size
-        say("Moved ${move.photo.name} → ${target.name}$note · $left left", undoable = true)
+        say("Moved ${move.photo.name} → ${target.name}$note · $left left", action = Action.UNDO)
     }
 
     fun undo() = background {
@@ -140,6 +152,21 @@ class MainViewModel @JvmOverloads constructor(
     }
 
     fun reload() = background { gallery.reload() }
+
+    /** A new random order for the photos, from the top. Files are never renamed. */
+    fun shuffle() = background {
+        if (gallery.photos.isEmpty()) return@background
+        gallery.shuffle()
+        prefs.shuffleSeed = (gallery.order as? Order.Shuffled)?.seed
+        val count = gallery.photos.size
+        say("Shuffled $count photo${if (count == 1) "" else "s"}. Tap shuffle again for a new order.", action = Action.NAME_ORDER)
+    }
+
+    fun sortByName() = background {
+        gallery.sortByName()
+        prefs.shuffleSeed = null
+        say("Back to name order")
+    }
 
     /**
      * Steps right away, on the calling thread, so a swipe lands without a
@@ -187,12 +214,13 @@ class MainViewModel @JvmOverloads constructor(
             index = gallery.index,
             canUndo = gallery.canUndo,
             busy = false,
+            shuffled = gallery.order is Order.Shuffled,
         )
         if (current != null) prefs.lastPhoto = current.name
     }
 
-    private fun say(text: String, error: Boolean = false, undoable: Boolean = false) {
-        _messages.tryEmit(Message(text, error, undoable))
+    private fun say(text: String, error: Boolean = false, action: Action? = null) {
+        _messages.tryEmit(Message(text, error, action))
     }
 
     override fun onCleared() {

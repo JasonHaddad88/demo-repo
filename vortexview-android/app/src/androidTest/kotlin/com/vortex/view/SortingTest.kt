@@ -166,5 +166,29 @@ class SortingTest {
         save("7-zoomed")
 
         assertTrue(File(camera, "IMG_1.jpg").exists() && File(camera, "IMG_3.jpg").exists())
+        compose.onRoot().performTouchInput { doubleClick(center) } // and out again
+        compose.waitForIdle()
+
+        // Shuffle: the same photos in another order, from the top, files untouched.
+        val names = listOf("IMG_1.jpg", "IMG_2.jpg", "IMG_3.jpg")
+        compose.onNodeWithContentDescription("Shuffle the order").performClick()
+        waitFor("the shuffle") { vm.state.shuffled }
+        assertEquals(names.toSet(), vm.state.photos.map { it.name }.toSet())
+        assertEquals(0, vm.state.index)
+        save("8-shuffled")
+        // Three photos can shuffle back into name order by chance: deal until they don't.
+        repeat(20) {
+            if (vm.state.photos.map { it.name } != names) return@repeat
+            compose.onNodeWithContentDescription("Shuffle again").performClick()
+            Thread.sleep(200)
+            compose.waitForIdle()
+        }
+        assertTrue("never came out of name order", vm.state.photos.map { it.name } != names)
+        assertEquals("shuffling must not touch the files", names, camera.list()!!.sorted())
+
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Back to name order").performClick()
+        waitFor("name order") { !vm.state.shuffled }
+        assertEquals(names, vm.state.photos.map { it.name })
     }
 }

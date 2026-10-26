@@ -112,10 +112,16 @@ fun VortexViewApp(vm: MainViewModel) {
             lastError = message.error
             val result = snackbar.showSnackbar(
                 message.text,
-                actionLabel = if (message.undoable) "Undo" else null,
+                actionLabel = message.action?.label,
                 duration = if (message.error) SnackbarDuration.Long else SnackbarDuration.Short,
             )
-            if (result == SnackbarResult.ActionPerformed) vm.undo()
+            if (result == SnackbarResult.ActionPerformed) {
+                when (message.action) {
+                    Action.UNDO -> vm.undo()
+                    Action.NAME_ORDER -> vm.sortByName()
+                    null -> {}
+                }
+            }
         }
     }
 
@@ -187,6 +193,8 @@ fun VortexViewApp(vm: MainViewModel) {
                     state = state,
                     shown = shown,
                     onUndo = vm::undo,
+                    onShuffle = vm::shuffle,
+                    onNameOrder = vm::sortByName,
                     onOpen = { openFolder.launch(vm.pickerStart()) },
                     onReload = vm::reload,
                 )
@@ -290,7 +298,15 @@ private val BarColour = Color.Black.copy(alpha = 0.6f)
 private val PanelColour = Color(0xFF1C1B24)
 
 @Composable
-private fun TopBar(state: UiState, shown: Decoded?, onUndo: () -> Unit, onOpen: () -> Unit, onReload: () -> Unit) {
+private fun TopBar(
+    state: UiState,
+    shown: Decoded?,
+    onUndo: () -> Unit,
+    onShuffle: () -> Unit,
+    onNameOrder: () -> Unit,
+    onOpen: () -> Unit,
+    onReload: () -> Unit,
+) {
     val current = state.current
     var menu by remember { mutableStateOf(false) }
     Surface(color = BarColour, modifier = Modifier.fillMaxWidth()) {
@@ -305,7 +321,7 @@ private fun TopBar(state: UiState, shown: Decoded?, onUndo: () -> Unit, onOpen: 
                         overflow = TextOverflow.Ellipsis,
                     )
                     val details = buildList {
-                        if (current != null) add("${state.index + 1} of ${state.photos.size}")
+                        if (current != null) add("${state.index + 1} of ${state.photos.size}" + if (state.shuffled) " (shuffled)" else "")
                         if (shown != null) add("${shown.width} × ${shown.height}")
                         if (current != null && current.size >= 0) add(humanSize(current.size))
                         state.folder?.let { add(it.name) }
@@ -318,6 +334,14 @@ private fun TopBar(state: UiState, shown: Decoded?, onUndo: () -> Unit, onOpen: 
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                // Lit up while the photos are shuffled; each tap deals a new order.
+                IconButton(onClick = onShuffle, enabled = state.photos.size > 1) {
+                    Icon(
+                        Icons.Shuffle,
+                        if (state.shuffled) "Shuffle again" else "Shuffle the order",
+                        tint = if (state.shuffled) MaterialTheme.colorScheme.primary else Color.White,
+                    )
+                }
                 IconButton(onClick = onUndo, enabled = state.canUndo) {
                     Icon(Icons.Undo, "Undo the last move", tint = if (state.canUndo) Color.White else Color.White.copy(alpha = 0.35f))
                 }
@@ -326,6 +350,11 @@ private fun TopBar(state: UiState, shown: Decoded?, onUndo: () -> Unit, onOpen: 
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("Open another folder…") }, onClick = { menu = false; onOpen() })
                         DropdownMenuItem(text = { Text("Read the folder again") }, onClick = { menu = false; onReload() })
+                        if (state.shuffled) {
+                            DropdownMenuItem(text = { Text("Back to name order") }, onClick = { menu = false; onNameOrder() })
+                        } else {
+                            DropdownMenuItem(text = { Text("Shuffle the order") }, onClick = { menu = false; onShuffle() })
+                        }
                     }
                 }
             }

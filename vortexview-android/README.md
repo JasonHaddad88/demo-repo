@@ -39,9 +39,26 @@ are separate apps.
 | Pinch, or double-tap | Zoom in where your fingers are; double-tap again to fit |
 | Drag (when zoomed) | Look around the photo |
 | Back (when zoomed) | Back to the whole photo |
+| **Shuffle** (⤮, top) | Show the photos in a random order; tap again for a new one |
 | Tap the photo | Hide or show the controls (full screen) |
 | Press and hold a folder button | Change that folder, or remove it from the list |
-| ⋮ menu | Open another folder, or read the folder again |
+| ⋮ menu | Open another folder, read the folder again, or go back to name order |
+
+## Shuffle
+
+Tap **⤮** at the top to go through the folder in a random order, starting from
+a random photo. The button lights up while you're shuffled, and the counter
+says *(shuffled)*. Tap it again to deal a new order; to go back, choose
+**Back to name order** from the ⋮ menu, or **Name order** on the message.
+
+Only the viewing order changes: files are never renamed. Sorting works just the
+same while shuffled, and the order holds still while you sort:
+
+- moving a photo out never reshuffles the rest, and Undo puts it back in its
+  place in the shuffle;
+- a photo that arrives in the folder later lands somewhere random;
+- close the app and open it again and you're in the same order, on the same
+  photo. A shuffle carries over to the next folder you open, with a new order.
 
 ## What it's careful about
 

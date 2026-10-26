@@ -27,6 +27,30 @@ class Gallery(private val storage: Storage) {
 
     val current: Photo? get() = list.getOrNull(index)
 
+    /** The viewing order; it carries over to the next folder opened. */
+    var order: Order = Order.ByName
+        private set
+
+    /** Shows the photos in a new random order, from the start of it. */
+    fun shuffle(seed: Long = kotlin.random.Random.nextLong()) {
+        order = Order.Shuffled(seed)
+        list.sortWith(order.comparator)
+        index = 0
+    }
+
+    /** Back to name order, staying on the photo you're looking at. */
+    fun sortByName() {
+        val currentName = current?.name
+        order = Order.ByName
+        list.sortWith(order.comparator)
+        index = list.indexOfFirst { it.name == currentName }.coerceAtLeast(0)
+    }
+
+    /** For carrying on where you left off: the order, before [open] is called. */
+    fun useOrder(order: Order) {
+        this.order = order
+    }
+
     /** Opens [folder], starting at the photo called [startAt] if it is there. */
     fun open(folder: Folder, startAt: String? = null) {
         if (!storage.exists(folder)) throw MoveException("The folder ${folder.name} isn't there any more — open it again")
@@ -97,13 +121,13 @@ class Gallery(private val storage: Storage) {
 
         val open = folder
         if (open != null && storage.sameFolder(open, last.from)) {
-            val position = last.index.coerceAtMost(list.size)
+            // Where it belongs in the order now, which may not be the order it left.
+            val position = list.indexOfFirst { order.comparator.compare(it, back) > 0 }.let { if (it < 0) list.size else it }
             list.add(position, back)
             index = position
         }
         return Move(last.moved, last.to, last.from, back, last.index)
     }
 
-    private fun scan(folder: Folder): List<Photo> =
-        storage.list(folder).sortedWith(compareBy(Names.naturalOrder) { it.name })
+    private fun scan(folder: Folder): List<Photo> = storage.list(folder).sortedWith(order.comparator)
 }
