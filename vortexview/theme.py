@@ -1,0 +1,364 @@
+"""The Vortex family's themes, after VortexTawla's assets/css/themes.css.
+
+Every colour in the window comes from here. Tk has no transparency, so the
+translucent tokens (washes, borders, glass) are flattened onto the ground
+they sit on; the ground itself, with its haloes and texture, is drawn as an
+image behind the photo.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from PIL import Image, ImageDraw
+
+RGBA = tuple  # (r, g, b, a) with a in 0..1
+
+
+def _hex(value: str) -> RGBA:
+    value = value.lstrip("#")
+    return (int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16), 1.0)
+
+
+def _over(top: RGBA, bottom: RGBA) -> RGBA:
+    a = top[3]
+    return tuple(round(top[i] * a + bottom[i] * (1 - a)) for i in range(3)) + (1.0,)
+
+
+def _css(colour: RGBA) -> str:
+    return "#%02x%02x%02x" % colour[:3]
+
+
+# Token for token from Tawla. (r, g, b, alpha) where Tawla uses rgba().
+_THEMES: dict[str, dict] = {
+    "vortex": dict(
+        name="Vortex", light=False, texture=None,
+        bg="#06060a", halo1=(168, 85, 247, .10), halo2=(103, 232, 249, .08),
+        surface="#0e0e18", surface2="#14141f", glass=(14, 14, 24, .72),
+        text="#e2e8f0", muted="#7c8492", subtle="#9ca3af",
+        border=(168, 85, 247, .18), border_strong=(168, 85, 247, .45),
+        accent="#a855f7", accent_wash=(168, 85, 247, .10), accent2="#67e8f9", accent2_wash=(103, 232, 249, .10),
+        brand1="#a855f7", brand2="#67e8f9", logo_core="#06060a",
+        danger="#ef4444", success="#34d399", warning="#fbbf24",
+    ),
+    "nova": dict(
+        name="Nova", light=True, texture=None,
+        bg="#dfe4ec", halo1=(255, 255, 255, .85), halo2=(120, 180, 255, .22),
+        surface="#f2f5f9", surface2="#e6ebf2", glass=(246, 249, 253, .72),
+        text="#131722", muted="#4d5768", subtle="#333c4b",
+        border=(60, 140, 235, .30), border_strong=(60, 140, 235, .62),
+        accent="#2f7fd8", accent_wash=(80, 165, 255, .14), accent2="#1d6fbe", accent2_wash=(120, 195, 255, .16),
+        brand1="#8fa3bd", brand2="#4da3ff", logo_core="#eef2f7",
+        danger="#c02626", success="#10714d", warning="#8a5a00",
+    ),
+    "atrium": dict(
+        name="Atrium", light=False, texture=None,
+        bg="#0b0e13", halo1=(90, 170, 255, .22), halo2=(30, 48, 74, .65),
+        surface=(38, 48, 62, .55), surface2=(24, 31, 41, .62), glass=(16, 21, 28, .55),
+        text="#eaf2fb", muted="#93a3b8", subtle="#bccbde",
+        border=(120, 190, 255, .22), border_strong=(120, 190, 255, .58),
+        accent="#58c8ff", accent_wash=(88, 200, 255, .12), accent2="#8fe3ff", accent2_wash=(143, 227, 255, .12),
+        brand1="#9fb4cc", brand2="#58c8ff", logo_core="#0b0e13",
+        danger="#ff7a6e", success="#5ce0a8", warning="#ffd166",
+    ),
+    "gtx": dict(
+        name="GTX", light=False, texture="carbon",
+        bg="#08090b", halo1=(255, 47, 47, .16), halo2=(255, 255, 255, .04),
+        surface=(23, 25, 29, .86), surface2=(15, 17, 20, .92), glass=(10, 11, 13, .72),
+        text="#f5f7fa", muted="#9aa3ad", subtle="#ccd3da",
+        border=(255, 47, 47, .34), border_strong=(255, 47, 47, .78),
+        accent="#ff2f2f", accent_wash=(255, 47, 47, .12), accent2="#d7dde3", accent2_wash=(215, 221, 227, .10),
+        brand1="#ff2f2f", brand2="#d7dde3", logo_core="#08090b",
+        danger="#ff5c5c", success="#4ade80", warning="#fbbf24",
+    ),
+    "mono": dict(
+        name="Mono", light=False, texture=None,
+        bg="#000000", halo1=(255, 255, 255, .05), halo2=(255, 255, 255, .03),
+        surface="#0a0a0a", surface2="#131313", glass=(10, 10, 10, .80),
+        text="#ffffff", muted="#9a9a9a", subtle="#c9c9c9",
+        border=(255, 255, 255, .20), border_strong=(255, 255, 255, .55),
+        accent="#ffffff", accent_wash=(255, 255, 255, .10), accent2="#d0d0d0", accent2_wash=(255, 255, 255, .08),
+        brand1="#ffffff", brand2="#7a7a7a", logo_core="#000000",
+        danger="#ff8f8f", success="#b7f0cf", warning="#f0dfa8",
+    ),
+    "bamboo": dict(
+        name="Bamboo", light=False, texture="leaves",
+        bg="#0c1810", halo1=(126, 200, 116, .14), halo2=(26, 74, 40, .45),
+        surface="#16281a", surface2="#1b3120", glass=(18, 41, 26, .78),
+        text="#edf7e8", muted="#9ab894", subtle="#cfe6c8",
+        border=(126, 200, 116, .26), border_strong=(150, 220, 138, .58),
+        accent="#7cc46e", accent_wash=(124, 196, 110, .12), accent2="#c3d977", accent2_wash=(195, 217, 119, .12),
+        brand1="#7cc46e", brand2="#c3d977", logo_core="#0c1810",
+        danger="#e8836b", success="#8fd99a", warning="#e0c56a",
+        leaf_ink=(150, 214, 138, .085),
+    ),
+    "qahwa": dict(
+        name="Qahwa", light=False, texture=None,
+        bg="#1b120a", halo1=(198, 142, 62, .12), halo2=(90, 46, 20, .35),
+        surface="#2a1c11", surface2="#332315", glass=(42, 28, 17, .80),
+        text="#f4e7d2", muted="#b79a76", subtle="#d8c3a2",
+        border=(198, 142, 62, .28), border_strong=(214, 168, 92, .60),
+        accent="#d1a24c", accent_wash=(209, 162, 76, .12), accent2="#62a88b", accent2_wash=(98, 168, 139, .12),
+        brand1="#d1a24c", brand2="#8c5a2b", logo_core="#1b120a",
+        danger="#d4674a", success="#7fbf92", warning="#e8b552",
+    ),
+}
+
+# In Tawla's order.
+THEME_IDS = ["vortex", "nova", "atrium", "gtx", "mono", "bamboo", "qahwa"]
+
+
+@dataclass(frozen=True)
+class Palette:
+    """A theme with every colour flattened to a Tk colour string."""
+
+    id: str
+    name: str
+    light: bool
+    texture: str | None
+    bg: str
+    surface: str
+    surface2: str
+    glass: str
+    text: str
+    muted: str
+    subtle: str
+    border: str
+    border_strong: str
+    accent: str
+    accent_wash: str
+    accent2: str
+    accent2_wash: str
+    brand1: str
+    brand2: str
+    logo_core: str
+    danger: str
+    danger_wash: str
+    success: str
+    warning: str
+    halo1: RGBA
+    halo2: RGBA
+    leaf_ink: RGBA
+
+
+def palette(theme_id: str | None) -> Palette:
+    t = _THEMES.get(theme_id or "", _THEMES["vortex"])
+    tid = theme_id if theme_id in _THEMES else "vortex"
+
+    def solid(key):
+        value = t[key]
+        return _hex(value) if isinstance(value, str) else value
+
+    bg = solid("bg")
+    glass = _over(solid("glass"), bg)
+    surface = _over(solid("surface"), bg)
+    danger = solid("danger")
+    return Palette(
+        id=tid,
+        name=t["name"],
+        light=t["light"],
+        texture=t["texture"],
+        bg=_css(bg),
+        surface=_css(surface),
+        surface2=_css(_over(solid("surface2"), bg)),
+        glass=_css(glass),
+        text=t["text"],
+        muted=t["muted"],
+        subtle=t["subtle"],
+        # Lines and washes sit on the glass bars and cards.
+        border=_css(_over(solid("border"), glass)),
+        border_strong=_css(_over(solid("border_strong"), glass)),
+        accent=t["accent"],
+        accent_wash=_css(_over(solid("accent_wash"), glass)),
+        accent2=t["accent2"],
+        accent2_wash=_css(_over(solid("accent2_wash"), glass)),
+        brand1=t["brand1"],
+        brand2=t["brand2"],
+        logo_core=t["logo_core"],
+        danger=t["danger"],
+        danger_wash=_css(_over(danger[:3] + (0.12,), glass)),
+        success=t["success"],
+        warning=t["warning"],
+        halo1=solid("halo1"),
+        halo2=solid("halo2"),
+        leaf_ink=t.get("leaf_ink", (0, 0, 0, 0)),
+    )
+
+
+# -- pictures ---------------------------------------------------------------
+
+
+def logo(size: int, p: Palette, scale: int = 4) -> Image.Image:
+    """The Vortex mark: a gradient square with a dark core. Drawn large and
+    scaled down, so it stays crisp."""
+    big = size * scale
+    b1, b2 = _hex(p.brand1), _hex(p.brand2)
+    # 135° gradient: constant along the anti-diagonal.
+    ramp = Image.linear_gradient("L").resize((big, big))
+    # Dark-to-light downwards, blended with the same turned to run left to right.
+    diagonal = Image.blend(ramp, ramp.rotate(90), 0.5)
+    gradient = Image.composite(
+        Image.new("RGB", (big, big), b2[:3]), Image.new("RGB", (big, big), b1[:3]), diagonal
+    ).convert("RGBA")
+    mask = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, big - 1, big - 1), radius=big * 8 // 30, fill=255)
+    image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    image.paste(gradient, (0, 0), mask)
+    inset = big * 5 // 30
+    ImageDraw.Draw(image).rounded_rectangle(
+        (inset, inset, big - 1 - inset, big - 1 - inset), radius=big * 4 // 30, fill=_hex(p.logo_core)[:3]
+    )
+    return image.resize((size, size), Image.LANCZOS)
+
+
+def ground(width: int, height: int, p: Palette) -> Image.Image:
+    """The window's ground, as Tawla's body: colour, texture, and two soft
+    haloes, top left and bottom right."""
+    width, height = max(1, width), max(1, height)
+    image = Image.new("RGB", (width, height), _hex(p.bg)[:3])
+    if p.texture == "carbon":
+        _carbon(image)
+    elif p.texture == "leaves":
+        _leaves(image, p.leaf_ink)
+    # A halo is the theme's colour faded out to 60% of the way to the far corner.
+    reach = (width ** 2 + height ** 2) ** 0.5
+    for colour, corner in ((p.halo2, (width, height)), (p.halo1, (0, 0))):
+        _halo(image, colour, corner, reach)
+    return image
+
+
+def _halo(image: Image.Image, colour: RGBA, corner: tuple[int, int], reach: float) -> None:
+    """CSS `radial-gradient(ellipse at <corner>, colour, transparent 60%)`: full
+    strength at the corner, fading evenly to nothing 60% of the way across.
+    Worked out on a coarse grid and scaled up, which a smooth glow allows."""
+    width, height = image.size
+    step = 8
+    cols, rows = width // step + 2, height // step + 2
+    end = 0.6 * reach
+    alpha = Image.new("L", (cols, rows))
+    alpha.putdata([
+        round(255 * colour[3] * max(0.0, 1 - ((x * step - corner[0]) ** 2 + (y * step - corner[1]) ** 2) ** 0.5 / end))
+        for y in range(rows) for x in range(cols)
+    ])
+    alpha = alpha.resize((cols * step, rows * step), Image.BILINEAR).crop((0, 0, width, height))
+    tint = Image.new("RGB", (width, height), colour[:3])
+    image.paste(tint, (0, 0), alpha)
+
+
+def _carbon(image: Image.Image, tile: int = 34) -> None:
+    """GTX's 2/2 twill carbon weave, from Tawla's carbon.svg."""
+    half = tile // 2
+    block = Image.new("RGB", (tile, tile), (0x14, 0x16, 0x19))
+    across = Image.linear_gradient("L").resize((half, half))  # dark at the top, light at the bottom
+    sheen = across.point(lambda v: 255 - abs(v * 2 - 255))  # bright down the middle
+    dark, light = (0x0A, 0x0B, 0x0D), (0x2C, 0x31, 0x38)
+    vertical = Image.composite(Image.new("RGB", (half, half), light), Image.new("RGB", (half, half), dark), sheen.rotate(90))
+    horizontal = Image.composite(Image.new("RGB", (half, half), light), Image.new("RGB", (half, half), dark), sheen)
+    block.paste(vertical, (0, 0))
+    block.paste(vertical, (half, half))
+    block.paste(horizontal, (half, 0))
+    block.paste(horizontal, (0, half))
+    pen = ImageDraw.Draw(block)
+    for line in ((half, 0, half, tile), (0, half, tile, half), (0, 0, tile, 0), (0, 0, 0, tile)):
+        pen.line(line, fill=(0x0B, 0x0C, 0x0E))
+    for y in range(0, image.height, tile):
+        for x in range(0, image.width, tile):
+            image.paste(block, (x, y))
+
+
+# Bamboo's ghost leaves, from Tawla's leaves.svg: x, y, degrees, scale, opacity on a 560 grid.
+_LEAVES = [
+    (48, 86, -24, 1.15, .85), (96, 150, 18, .8, .55), (210, 52, 41, .95, .7), (330, 120, -12, 1.3, .6),
+    (430, 38, 63, .75, .8), (150, 268, -52, 1.05, .65), (268, 318, 9, .88, .8), (392, 262, -38, 1.2, .55),
+    (62, 392, 27, .92, .75), (196, 462, -16, 1.1, .6), (340, 432, 48, .82, .8), (462, 368, -6, 1.0, .65),
+    (470, 494, 33, .9, .7), (-30, 220, -8, 1.1, .6), (530, 220, -8, 1.1, .6), (250, -26, 72, .95, .7),
+    (250, 534, 72, .95, .7),
+]
+
+
+def _leaf_outline(steps: int = 12) -> list[tuple[float, float]]:
+    """The leaf's two cubic curves, as points: M0,0 C20,-9 46,-6 72,7 C46,21 19,17 0,0."""
+    def cubic(p0, p1, p2, p3):
+        out = []
+        for i in range(steps + 1):
+            t = i / steps
+            u = 1 - t
+            out.append((
+                u ** 3 * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t ** 3 * p3[0],
+                u ** 3 * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t ** 3 * p3[1],
+            ))
+        return out
+
+    return cubic((0, 0), (20, -9), (46, -6), (72, 7)) + cubic((72, 7), (46, 21), (19, 17), (0, 0))[1:]
+
+
+def _leaves(image: Image.Image, ink: RGBA, tile: int = 520) -> None:
+    import math
+
+    outline = _leaf_outline()
+    layer = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    pen = ImageDraw.Draw(layer)
+    unit = tile / 560
+    for ty in range(0, image.height + tile, tile):
+        for tx in range(0, image.width + tile, tile):
+            for x, y, degrees, scale, opacity in _LEAVES:
+                angle = math.radians(degrees)
+                cos, sin = math.cos(angle), math.sin(angle)
+                points = [
+                    (tx + (x + (px * cos - py * sin) * scale) * unit, ty + (y + (px * sin + py * cos) * scale) * unit)
+                    for px, py in outline
+                ]
+                pen.polygon(points, fill=ink[:3] + (round(255 * ink[3] * opacity),))
+    image.paste(layer, (0, 0), layer)
+
+
+def wordmark(p: Palette, height: int, second: str = "VIEW") -> Image.Image:
+    """"VORTEX VIEW" as Tawla sets it: wide-spaced capitals, the second word
+    in the brand gradient. Tk can't space letters or fill text with a
+    gradient, so it is drawn as a picture."""
+    from PIL import ImageFont
+
+    size = max(8, round(height * 0.72))
+    font = None
+    for name in ("seguisb.ttf", "segoeuib.ttf", "DejaVuSans-Bold.ttf", "arialbd.ttf"):
+        try:
+            font = ImageFont.truetype(name, size)
+            break
+        except OSError:
+            continue
+    if font is None:
+        try:
+            font = ImageFont.load_default(size)
+        except TypeError:  # Pillow before 10.1 has one fixed size
+            font = ImageFont.load_default()
+    spacing = size * 0.12
+
+    def run(text: str) -> list[tuple[str, float]]:
+        out, x = [], 0.0
+        for char in text:
+            out.append((char, x))
+            x += font.getlength(char) + spacing
+        return out
+
+    first = run("VORTEX")
+    gap = size * 0.45
+    second_start = first[-1][1] + font.getlength(first[-1][0]) + gap
+    last = run(second)
+    width = int(second_start + last[-1][1] + font.getlength(last[-1][0])) + 2
+    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    pen = ImageDraw.Draw(image)
+    top = (height - size) / 2 - size * 0.1
+    for char, x in first:
+        pen.text((x, top), char, font=font, fill=_hex(p.text)[:3])
+    mask = Image.new("L", image.size, 0)
+    mask_pen = ImageDraw.Draw(mask)
+    for char, x in last:
+        mask_pen.text((second_start + x, top), char, font=font, fill=255)
+    # The gradient runs across the second word only, brand-1 to brand-2.
+    span = (max(1, image.width - int(second_start)), image.height)
+    ramp = Image.new("L", image.size, 0)
+    ramp.paste(Image.linear_gradient("L").rotate(90).resize(span), (int(second_start), 0))
+    b1, b2 = _hex(p.brand1)[:3], _hex(p.brand2)[:3]
+    gradient = Image.composite(Image.new("RGB", image.size, b2), Image.new("RGB", image.size, b1), ramp)
+    image.paste(gradient, (0, 0), mask)
+    return image

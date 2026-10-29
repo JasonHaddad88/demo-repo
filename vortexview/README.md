@@ -48,6 +48,8 @@ set VortexView as the *Open with* program for your photos.
 | Double-click | Switch between fit-to-window and 100% at the point you clicked |
 | `Ctrl+1` / `Ctrl+0` | 100% (actual pixels) / fit to the window |
 | Drag | Move around a zoomed-in photo |
+| `S` / **Shuffle** | Show the photos in a random order (again for a new one) |
+| `N` / **Name order** | Back to name order, staying on the same photo |
 | `F11` or `⛶` | Full screen (`Esc` to leave) |
 | `F5` | Re-read the folder |
 | `Ctrl+O` / `Ctrl+T` | Open a folder / add a destination folder |
@@ -59,6 +61,33 @@ it from the list (removing never touches the folder itself).
 clicking the percentage goes back to *Fit*. Each new photo starts fitted to the
 window. `Ctrl+1` is 100% zoom, not a move: only the plain number keys move
 photos. A touchpad pinch zooms too.
+
+## Looks
+
+VortexView wears the Vortex family's design, the same as
+[VortexTawla](https://github.com/JasonHaddad88/vortex-tawla): a near-black
+ground with soft haloes, glass bars, the gradient Vortex mark and wordmark, and
+outlined, wide-spaced capital buttons that light up in the accent colour.
+
+Pick a theme with the button at the top right (it shows the theme's name); it has Tawla's seven themes, colour for colour:
+
+| Theme | Looks like |
+| --- | --- |
+| **Vortex** | The original: black, purple and cyan |
+| **Nova** | Brushed silver under glass; the one light theme |
+| **Atrium** | Smoked glass lit from behind, electric cyan |
+| **GTX** | Carbon-fibre weave, gloss and racing red |
+| **Mono** | No colour at all: black, white and grey |
+| **Bamboo** | Leaf green and pale culm, ghost leaves behind |
+| **Qahwa** | The coffeehouse table: walnut and brass |
+
+## Shuffle
+
+**Shuffle** (or `S`) goes through the folder in a random order, from a random
+photo; press it again for a new order, and **Name order** (or `N`) to go back.
+Only the viewing order changes: files are never renamed. The order holds still
+while you sort (moving a photo never reshuffles the rest, and Ctrl+Z puts it
+back in its place), and VortexView reopens in the same order on the same photo.
 
 ## What it's careful about
 

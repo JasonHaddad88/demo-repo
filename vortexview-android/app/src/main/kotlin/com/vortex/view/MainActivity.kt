@@ -62,6 +62,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -98,10 +99,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        setContent {
-            VortexTheme(vm.palette) { VortexViewApp(vm) }
-        }
+        setContent { VortexViewRoot(vm) }
     }
+}
+
+/** The app in the theme chosen in its theme picker. */
+@Composable
+fun VortexViewRoot(vm: MainViewModel) {
+    VortexTheme(vm.palette) { VortexViewApp(vm) }
 }
 
 @Composable
@@ -168,7 +173,7 @@ fun VortexViewApp(vm: MainViewModel) {
 
     SystemBars(light = v.light, hidden = !chrome && current != null)
 
-    Box(Modifier.fillMaxSize().vortexGround(v)) {
+    Box(Modifier.fillMaxSize().vortexGround(v).testTag("vortexview")) {
         when {
             state.folder == null -> Welcome(onOpen = { openFolder.launch(null) }, onTheme = { picking = true })
             current == null -> Finished(

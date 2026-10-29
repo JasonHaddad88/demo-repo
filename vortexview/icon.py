@@ -1,4 +1,5 @@
-"""The VortexView icon — a photo with an arrow carrying it off — drawn in
+"""The VortexView icon: the Vortex family's mark, as VortexTawla draws it (a
+purple-to-cyan square with a dark core), with a photo in the core. Drawn in
 code, so the window and the .exe share it without a binary in the repo.
 
     python -m vortexview.icon VortexView.ico
@@ -10,28 +11,29 @@ import sys
 
 from PIL import Image, ImageDraw
 
-VIOLET = (91, 61, 245, 255)
-WHITE = (255, 255, 255, 255)
-SKY = (196, 186, 255, 255)
+PURPLE = (0xA8, 0x55, 0xF7, 255)
+CYAN = (0x67, 0xE8, 0xF9, 255)
+CORE = (0x06, 0x06, 0x0A, 255)
 
 
 def draw(size: int = 256) -> Image.Image:
     """Drawn large and scaled down, so small sizes stay crisp."""
     big = 512
+    # 135° gradient, purple at the top left to cyan at the bottom right.
+    ramp = Image.linear_gradient("L").resize((big, big))
+    diagonal = Image.blend(ramp, ramp.rotate(90), 0.5)
+    gradient = Image.composite(Image.new("RGBA", (big, big), CYAN), Image.new("RGBA", (big, big), PURPLE), diagonal)
+    mask = Image.new("L", (big, big), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, big - 1, big - 1), radius=round(big * 0.22), fill=255)
     image = Image.new("RGBA", (big, big), (0, 0, 0, 0))
+    image.paste(gradient, (0, 0), mask)
+
+    # The core, inset as on Tawla's icon, and the photo in it: a hill and a sun.
     pen = ImageDraw.Draw(image)
-    pen.rounded_rectangle((16, 16, big - 16, big - 16), radius=96, fill=VIOLET)
-
-    # The photo: a frame with a hill and a sun.
-    frame = (88, 124, 336, 332)
-    pen.rounded_rectangle(frame, radius=18, fill=SKY, outline=WHITE, width=18)
-    pen.polygon([(106, 314), (178, 222), (232, 280), (270, 240), (320, 314)], fill=VIOLET)
-    pen.ellipse((262, 160, 300, 198), fill=WHITE)
-
-    # The arrow carrying it off to the right.
-    pen.rectangle((300, 384, 400, 416), fill=WHITE)
-    pen.polygon([(392, 352), (448, 400), (392, 448)], fill=WHITE)
-    pen.line([(212, 364), (212, 400), (300, 400)], fill=WHITE, width=32, joint="curve")
+    inset = round(big * 0.17)
+    pen.rounded_rectangle((inset, inset, big - 1 - inset, big - 1 - inset), radius=round(big * 0.11), fill=CORE)
+    pen.polygon([(130, 372), (210, 262), (268, 326), (306, 288), (392, 372)], fill=PURPLE)
+    pen.ellipse((316, 140, 364, 188), fill=CYAN)
 
     return image.resize((size, size), Image.LANCZOS)
 

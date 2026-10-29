@@ -9,10 +9,12 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.isDialog
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
@@ -22,7 +24,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.services.storage.TestStorage
 import com.vortex.view.data.Prefs
 import com.vortex.view.ui.Themes
-import com.vortex.view.ui.VortexTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -60,7 +61,7 @@ class SortingTest {
 
         val prefs = Prefs(context, "vortexview-test").apply { clear() }
         vm = MainViewModel(context, FilePlaces(), prefs)
-        compose.setContent { VortexTheme { VortexViewApp(vm) } }
+        compose.setContent { VortexViewRoot(vm) }
     }
 
     @After
@@ -76,7 +77,10 @@ class SortingTest {
 
     // -- looking at the screen ------------------------------------------------
 
-    private fun screen(): Bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+    // The app's own surface: a menu or dialog still closing can't make this ambiguous.
+    private fun screen(): Bitmap = compose.onNodeWithTag("vortexview").captureToImage().asAndroidBitmap()
+
+    private fun photo() = compose.onNodeWithTag("photo")
 
     private fun centre(): Int = screen().let { it.getPixel(it.width / 2, it.height / 2) }
 
@@ -142,14 +146,14 @@ class SortingTest {
         save("3-keepers-added")
 
         // Swiping must change the photo on screen, not just its name.
-        compose.onRoot().performTouchInput { swipeLeft() }
+        photo().performTouchInput { swipeLeft() }
         waitFor("the second photo") { vm.state.index == 1 }
         waitForPhoto("green (IMG_2)", ::isGreen)
         save("4-swiped-to-2")
 
-        compose.onRoot().performTouchInput { swipeRight() }
+        photo().performTouchInput { swipeRight() }
         waitForPhoto("red (IMG_1) again", ::isRed)
-        compose.onRoot().performTouchInput { swipeLeft() }
+        photo().performTouchInput { swipeLeft() }
         waitForPhoto("green (IMG_2) again", ::isGreen)
 
         // Tap the folder button: IMG_2 moves, and IMG_3 takes its place.
@@ -167,13 +171,13 @@ class SortingTest {
         save("6-undone")
 
         // Double-tap zooms in; Back returns to the whole photo.
-        compose.onRoot().performTouchInput { doubleClick(center) }
+        photo().performTouchInput { doubleClick(center) }
         compose.waitForIdle()
         Thread.sleep(600) // the full-resolution detail follows a moment after the zoom
         save("7-zoomed")
 
         assertTrue(File(camera, "IMG_1.jpg").exists() && File(camera, "IMG_3.jpg").exists())
-        compose.onRoot().performTouchInput { doubleClick(center) } // and out again
+        photo().performTouchInput { doubleClick(center) } // and out again
         compose.waitForIdle()
 
         // Shuffle: the same photos in another order, from the top, files untouched.
@@ -203,11 +207,17 @@ class SortingTest {
         compose.onNodeWithText("Theme: Vortex…").performClick()
         compose.onNodeWithText("GTX").performClick()
         waitFor("the GTX theme") { vm.palette.id == "gtx" }
-        compose.onNodeWithText("Done", ignoreCase = true).performClick()
         compose.waitForIdle()
+        runCatching {
+            val picker = compose.onNode(isDialog()).captureToImage().asAndroidBitmap()
+            TestStorage().openOutputFile("vortexview-theme-picker.png").use { picker.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        compose.onNodeWithText("Done", ignoreCase = true).performClick()
+        // Nothing may be left open over the app: no dialog, no menu.
+        waitFor("the theme picker and menu to close") { compose.onAllNodes(isRoot()).fetchSemanticsNodes().size == 1 }
 
         // ...then move a photo, so a folder shows its count, and see every theme.
-        compose.onRoot().performTouchInput { swipeLeft() }
+        photo().performTouchInput { swipeLeft() }
         waitFor("a move to make") { vm.state.index >= 1 }
         compose.onNodeWithText("Keepers", ignoreCase = true).performClick()
         waitFor("the move") { (vm.state.sent.values.firstOrNull() ?: 0) == 1 }

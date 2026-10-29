@@ -48,6 +48,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -135,6 +136,7 @@ fun PhotoStage(
         Modifier
             .fillMaxSize()
             .clipToBounds()
+            .testTag("photo")
             .onSizeChanged { width = it.width.toFloat() }
             .pointerInput(current.id) {
                 detectTapGestures(

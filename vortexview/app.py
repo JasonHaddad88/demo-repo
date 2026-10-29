@@ -13,18 +13,16 @@ import tkinter as tk
 from collections import OrderedDict
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox
 
 from PIL import Image, ImageOps, ImageTk
 
-from . import __version__
+from . import __version__, theme
 from .library import MAX_TARGETS, Gallery, MoveError, Settings, heif_supported, same_folder
 from .viewport import Viewport
 
-BACKGROUND = "#1b1b1f"
-TEXT = "#d9d9de"
-MUTED = "#8b8b94"
-ERROR = "#c42b1c"
+UI_FONT = "Segoe UI"
+MONO_FONT = "Consolas"
 # Zooming in loads the photo at full size, up to this many pixels a side
 # (a 12000 x 9000 photo still fits comfortably in memory).
 FULL_SIDE = 12000
@@ -98,12 +96,100 @@ class Loader:
         self.pool.shutdown(wait=True, cancel_futures=True)
 
 
+def spaced(text: str, gap: str = "\u200a") -> str:
+    """Capitals with a hair space between letters: Tk can't letter-space, and
+    Tawla's labels and buttons are all wide-spaced capitals."""
+    return gap.join(text.upper())
+
+
+class VButton(tk.Frame):
+    """Tawla's `.btn` in Tk: transparent, outlined, wide-spaced capitals. On
+    hover (or [lit], for the one that matters most) it fills with a wash of
+    its colour and its border goes solid. The frame is the border."""
+
+    def __init__(
+        self,
+        parent: tk.Misc,
+        p: theme.Palette,
+        text: str,
+        command,
+        kind: str = "secondary",
+        lit: bool = False,
+        big: bool = False,
+        on: str | None = None,
+    ) -> None:
+        super().__init__(parent, padx=1, pady=1, highlightthickness=0)
+        self.p = p
+        self.command = command
+        self.lit = lit
+        self._text = text
+        self.ink, self.wash = {
+            "primary": (p.accent, p.accent_wash),
+            "danger": (p.danger, p.danger_wash),
+        }.get(kind, (p.accent2, p.accent2_wash))
+        self.rest = p.danger_wash if kind == "danger" else p.border_strong
+        self.ground = on or p.glass
+        self.label = tk.Label(
+            self,
+            text=spaced(text),
+            font=(UI_FONT, 10 if big else 9, "bold" if big else "normal"),
+            padx=16 if big else 11,
+            pady=8 if big else 4,
+            cursor="hand2",
+        )
+        self.label.pack(fill=tk.BOTH, expand=True)
+        self.hover = False
+        for widget in (self, self.label):
+            widget.bind("<Enter>", lambda _e: self._set_hover(True))
+            widget.bind("<Leave>", lambda _e: self._set_hover(False))
+            widget.bind("<ButtonRelease-1>", self._release)
+        self._paint()
+
+    def _set_hover(self, hover: bool) -> None:
+        self.hover = hover
+        self._paint()
+
+    def _paint(self) -> None:
+        on = self.hover or self.lit
+        super().configure(background=self.ink if on else self.rest)
+        self.label.configure(background=self.wash if on else self.ground, foreground=self.ink)
+
+    def _release(self, event: tk.Event) -> None:
+        # A click counts only if the pointer is still over the button when let go.
+        widget = event.widget
+        if 0 <= event.x < widget.winfo_width() and 0 <= event.y < widget.winfo_height():
+            self.invoke()
+
+    def invoke(self) -> None:
+        if self.command is not None:
+            self.command()
+
+    def set_lit(self, lit: bool) -> None:
+        self.lit = lit
+        self._paint()
+
+    def cget(self, key: str):
+        return self._text if key == "text" else super().cget(key)
+
+    def configure(self, cnf=None, **kw):
+        if "text" in kw:
+            self._text = kw.pop("text")
+            self.label.configure(text=spaced(self._text))
+        if cnf or kw:
+            return super().configure(cnf, **kw)
+        return None
+
+    config = configure
+
+
 class App:
     def __init__(self, root: tk.Tk, settings_file: Path | None = None) -> None:
         self.root = root
         self.settings_file = settings_file
         self.settings = Settings.load(settings_file)
+        self.p = theme.palette(self.settings.theme)
         self.gallery = Gallery()
+        self.gallery.shuffle_seed = self.settings.shuffle_seed
         side = max(root.winfo_screenwidth(), root.winfo_screenheight(), 1024)
         self.loader = Loader(min(side, 4096))
         self.photo: ImageTk.PhotoImage | None = None
@@ -117,9 +203,13 @@ class App:
         self.full_future: Future | None = None
         self.full_job: str | None = None
         self.drag_from: tuple[int, int] | None = None
+        # The haloed ground behind the photo, kept until the size or theme changes.
+        self.ground: ImageTk.PhotoImage | None = None
+        self.ground_key: tuple | None = None
+        self.brand: list[ImageTk.PhotoImage] = []
+        self.welcome_art: list[ImageTk.PhotoImage] = []
 
         root.title("VortexView")
-        root.configure(background=BACKGROUND)
         root.minsize(640, 420)
         try:
             from .icon import draw
@@ -143,35 +233,55 @@ class App:
     # -- layout -------------------------------------------------------------
 
     def _build(self) -> None:
-        style = ttk.Style(self.root)
-        style.configure("Target.TButton", padding=(10, 6))
-        style.configure("Primary.TButton", padding=(12, 6), font=("Segoe UI", 10, "bold"))
+        p = self.p
+        self.root.configure(background=p.bg)
+        self.brand = [ImageTk.PhotoImage(theme.logo(28, p)), ImageTk.PhotoImage(theme.wordmark(p, 22))]
 
-        top = ttk.Frame(self.root, padding=(8, 6))
-        top.pack(side=tk.TOP, fill=tk.X)
-        ttk.Button(top, text="Open folder…", command=self.choose_folder).pack(side=tk.LEFT)
-        ttk.Button(top, text="◀", width=3, command=lambda: self.step(-1)).pack(side=tk.LEFT, padx=(10, 2))
-        ttk.Button(top, text="▶", width=3, command=lambda: self.step(1)).pack(side=tk.LEFT, padx=(2, 10))
-        self.position_label = ttk.Label(top, text="")
-        self.position_label.pack(side=tk.LEFT)
-        self.name_label = ttk.Label(top, text="", font=("Segoe UI", 10, "bold"))
-        self.name_label.pack(side=tk.LEFT, padx=12)
-        ttk.Button(top, text="⛶", width=3, command=self.toggle_fullscreen).pack(side=tk.RIGHT)
-        ttk.Button(top, text="Undo", command=self.undo).pack(side=tk.RIGHT, padx=6)
-        ttk.Button(top, text="+", width=3, command=lambda: self.zoom_by(1)).pack(side=tk.RIGHT, padx=(0, 10))
-        self.zoom_button = ttk.Button(top, text="Fit", width=6, command=self.zoom_fit)
-        self.zoom_button.pack(side=tk.RIGHT, padx=2)
-        ttk.Button(top, text="−", width=3, command=lambda: self.zoom_by(-1)).pack(side=tk.RIGHT)
+        # The glass bar along the top, as Tawla's: the brand on the left, the controls on the right.
+        self.top = tk.Frame(self.root, background=p.glass, padx=14, pady=9)
+        self.top.pack(side=tk.TOP, fill=tk.X)
+        self.top_line = tk.Frame(self.root, background=p.border, height=1)
+        self.top_line.pack(side=tk.TOP, fill=tk.X)
+        top = self.top
+        tk.Label(top, image=self.brand[0], background=p.glass).pack(side=tk.LEFT)
+        tk.Label(top, image=self.brand[1], background=p.glass).pack(side=tk.LEFT, padx=(10, 18))
+        VButton(top, p, "Open folder", self.choose_folder).pack(side=tk.LEFT)
+        VButton(top, p, "◀", lambda: self.step(-1)).pack(side=tk.LEFT, padx=(10, 3))
+        VButton(top, p, "▶", lambda: self.step(1)).pack(side=tk.LEFT, padx=(3, 12))
+        # Right to left, as pack places them.
+        self.theme_button = VButton(top, p, p.name, self.choose_theme)
+        self.theme_button.pack(side=tk.RIGHT)
+        VButton(top, p, "⛶", self.toggle_fullscreen).pack(side=tk.RIGHT, padx=(0, 8))
+        VButton(top, p, "Undo", self.undo).pack(side=tk.RIGHT, padx=(0, 8))
+        VButton(top, p, "+", lambda: self.zoom_by(1)).pack(side=tk.RIGHT, padx=(0, 14))
+        self.zoom_button = VButton(top, p, "Fit", self.zoom_fit)
+        self.zoom_button.pack(side=tk.RIGHT, padx=3)
+        VButton(top, p, "−", lambda: self.zoom_by(-1)).pack(side=tk.RIGHT, padx=(14, 0))
+        self.name_order_button = VButton(top, p, "Name order", self.sort_by_name)
+        self.shuffle_button = VButton(top, p, "Shuffle", self.shuffle, kind="primary")
+        self.shuffle_button.pack(side=tk.RIGHT)
 
-        self.status = tk.Label(self.root, text="", anchor="w", padx=10, pady=4)
+        # Last, so the buttons have their room first and the name takes what is left.
+        info = tk.Frame(top, background=p.glass)
+        info.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.name_label = tk.Label(info, text="", background=p.glass, foreground=p.text, font=(UI_FONT, 10, "bold"), anchor="w")
+        self.name_label.pack(side=tk.TOP, fill=tk.X)
+        self.position_label = tk.Label(info, text="", background=p.glass, foreground=p.accent2, font=(MONO_FONT, 9), anchor="w")
+        self.position_label.pack(side=tk.TOP, fill=tk.X)
+
+        self.status = tk.Label(
+            self.root, text="", anchor="w", padx=16, pady=6,
+            background=p.glass, foreground=p.subtle, font=(UI_FONT, 9),
+        )
         self.status.pack(side=tk.BOTTOM, fill=tk.X)
-        # A plain tk.Label has no "reset" colour, so remember the theme's own.
-        self.status_colour = self.status.cget("foreground")
+        self.status_colour = p.subtle
 
-        self.target_bar = ttk.Frame(self.root, padding=(8, 6))
+        self.target_bar = tk.Frame(self.root, background=p.glass, padx=16, pady=10)
         self.target_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.target_line = tk.Frame(self.root, background=p.border, height=1)
+        self.target_line.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.canvas = tk.Canvas(self.root, background=BACKGROUND, highlightthickness=0)
+        self.canvas = tk.Canvas(self.root, background=p.bg, highlightthickness=0)
         self.canvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         self.canvas.bind("<Configure>", self._on_resize)
         self.canvas.bind("<Double-Button-1>", lambda e: self.zoom_toggle((e.x, e.y)))
@@ -180,42 +290,64 @@ class App:
         self.canvas.bind("<ButtonRelease-1>", self._drag_end)
 
         self.rebuild_targets()
+        self._show_order()
+
+    def _section_head(self, parent: tk.Misc, text: str) -> tk.Label:
+        """Tawla's `.section-head h2`: small, wide-spaced capitals in the muted ink."""
+        return tk.Label(
+            parent, text=spaced(text, "\u2009"), background=self.p.glass, foreground=self.p.muted,
+            font=(UI_FONT, 9, "bold"),
+        )
 
     def rebuild_targets(self) -> None:
+        p = self.p
         for child in self.target_bar.winfo_children():
             child.destroy()
-        self.target_buttons: list[ttk.Button] = []
-        ttk.Label(self.target_bar, text="Move to:").pack(side=tk.LEFT, padx=(0, 8))
+        self.target_buttons: list[VButton] = []
 
         if not self.settings.targets:
-            ttk.Button(
-                self.target_bar,
-                text="Choose the folder to move photos into…",
-                style="Primary.TButton",
-                command=self.add_target,
+            self._section_head(self.target_bar, "Where should photos go?").pack(side=tk.LEFT, padx=(0, 14))
+            VButton(
+                self.target_bar, p, "Choose the folder to move photos into…", self.add_target,
+                kind="primary", lit=True, big=True,
             ).pack(side=tk.LEFT)
-            ttk.Label(self.target_bar, text="  then press M (or 1) to move the photo you're on", foreground=MUTED).pack(side=tk.LEFT)
+            tk.Label(
+                self.target_bar, text="  then press M (or 1) to move the photo you're on",
+                background=p.glass, foreground=p.muted, font=(UI_FONT, 9),
+            ).pack(side=tk.LEFT)
             return
 
+        self._section_head(self.target_bar, "Move this photo to").pack(side=tk.LEFT, padx=(0, 14))
         for slot, folder in enumerate(self.settings.targets):
             path = Path(folder)
             missing = not path.is_dir()
             label = f"{slot + 1}   {path.name or folder}" + ("  (missing)" if missing else "")
-            button = ttk.Button(
-                self.target_bar,
-                text=label,
-                style="Primary.TButton" if slot == 0 else "Target.TButton",
-                command=lambda s=slot: self.move_to(s),
+            button = VButton(
+                self.target_bar, p, label, lambda s=slot: self.move_to(s),
+                kind="danger" if missing else ("primary" if slot == 0 else "secondary"),
+                lit=slot == 0 and not missing, big=True,
             )
-            button.pack(side=tk.LEFT, padx=(0, 6))
-            button.bind("<Button-3>", lambda event, s=slot: self._target_menu(event, s))
+            button.pack(side=tk.LEFT, padx=(0, 8))
+            for widget in (button, button.label):
+                widget.bind("<Button-3>", lambda event, s=slot: self._target_menu(event, s))
             self.target_buttons.append(button)
         if len(self.settings.targets) < MAX_TARGETS:
-            ttk.Button(self.target_bar, text="+ Another folder…", command=self.add_target).pack(side=tk.LEFT, padx=(6, 0))
-        ttk.Label(self.target_bar, text="Right-click a folder to change or remove it", foreground=MUTED).pack(side=tk.RIGHT)
+            VButton(self.target_bar, p, "+ Another folder…", self.add_target).pack(side=tk.LEFT, padx=(6, 0))
+        tk.Label(
+            self.target_bar, text="Right-click a folder to change or remove it",
+            background=p.glass, foreground=p.muted, font=(UI_FONT, 9),
+        ).pack(side=tk.RIGHT)
+
+    def _menu(self) -> tk.Menu:
+        """A menu in the theme's colours (as far as the system lets a menu be coloured)."""
+        p = self.p
+        return tk.Menu(
+            self.root, tearoff=False, background=p.surface2, foreground=p.text,
+            activebackground=p.accent_wash, activeforeground=p.accent2, borderwidth=1, relief="solid",
+        )
 
     def _target_menu(self, event: tk.Event, slot: int) -> None:
-        menu = tk.Menu(self.root, tearoff=False)
+        menu = self._menu()
         menu.add_command(label="Move photo here", command=lambda: self.move_to(slot))
         menu.add_command(label="Change folder…", command=lambda: self.change_target(slot))
         menu.add_command(label="Open in Explorer", command=lambda: self.reveal(Path(self.settings.targets[slot])))
@@ -225,6 +357,68 @@ class App:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
+
+    # -- themes and order -----------------------------------------------------
+
+    def choose_theme(self) -> None:
+        """Tawla's theme select, as a menu under the button."""
+        menu = self._menu()
+        choice = tk.StringVar(value=self.p.id)
+        for tid in theme.THEME_IDS:
+            menu.add_radiobutton(
+                label=theme.palette(tid).name, value=tid, variable=choice,
+                command=lambda t=tid: self.apply_theme(t),
+            )
+        button = self.theme_button
+        try:
+            menu.tk_popup(button.winfo_rootx(), button.winfo_rooty() + button.winfo_height())
+        finally:
+            menu.grab_release()
+
+    def apply_theme(self, theme_id: str) -> None:
+        """Repaints the whole window in another theme, and remembers it."""
+        self.p = theme.palette(theme_id)
+        self.settings.theme = self.p.id
+        self.settings.save(self.settings_file)
+        status = (self.status.cget("text"), self.status.cget("foreground") == self.p.danger)
+        for widget in (self.top, self.top_line, self.status, self.target_bar, self.target_line, self.canvas):
+            widget.destroy()
+        self.ground = None
+        self.ground_key = None
+        self._build()
+        self.say(status[0], error=status[1])
+        self.root.update_idletasks()
+        if self.picture is not None and self.picture.image is not None:
+            self._render()
+        else:
+            self.show()
+
+    def shuffle(self) -> None:
+        """A new random order for the photos, from the top. Files are never renamed."""
+        if len(self.gallery.images) < 2:
+            self.say("Nothing to shuffle")
+            return
+        self.settings.shuffle_seed = self.gallery.shuffle()
+        self.settings.save(self.settings_file)
+        self.say(f"Shuffled {len(self.gallery.images)} photos   ·   S for a new order, N for name order")
+        self.show()
+
+    def sort_by_name(self) -> None:
+        self.gallery.sort_by_name()
+        self.settings.shuffle_seed = None
+        self.settings.save(self.settings_file)
+        self.say("Back to name order")
+        self.show()
+
+    def _show_order(self) -> None:
+        """Shuffle lights up while shuffled, and Name order appears beside it."""
+        shuffled = self.gallery.shuffle_seed is not None
+        self.shuffle_button.set_lit(shuffled)
+        if shuffled and self.name_order_button.winfo_manager() != "pack":
+            # Packed after Shuffle, so it sits to its left.
+            self.name_order_button.pack(side=tk.RIGHT, padx=(0, 8), after=self.shuffle_button)
+        elif not shuffled:
+            self.name_order_button.pack_forget()
 
     def _bind_keys(self) -> None:
         bind = self.root.bind
@@ -241,6 +435,10 @@ class App:
         for slot in range(MAX_TARGETS):
             bind(f"<KeyPress-{slot + 1}>", lambda _e, s=slot: self.move_to(s))
             bind(f"<KeyPress-KP_{slot + 1}>", lambda _e, s=slot: self.move_to(s))
+        bind("<KeyPress-s>", lambda _e: self.shuffle())
+        bind("<KeyPress-S>", lambda _e: self.shuffle())
+        bind("<KeyPress-n>", lambda _e: self.sort_by_name())
+        bind("<KeyPress-N>", lambda _e: self.sort_by_name())
         bind("<Control-z>", lambda _e: self.undo())
         bind("<Control-Z>", lambda _e: self.undo())
         bind("<Control-o>", lambda _e: self.choose_folder())
@@ -406,16 +604,18 @@ class App:
             self.position_label.configure(text="")
             self.name_label.configure(text="")
             self.root.title("VortexView")
+            self._show_order()
             if self.gallery.folder is None:
-                self._message("Open a folder of photos\n\nCtrl+O, or the “Open folder…” button")
+                self._message("Open a folder of photos\n\nCtrl+O, or the “Open folder” button", welcome=True)
             elif self.gallery.history:
                 self._message(f"All done — no photos left in\n{self.gallery.folder}\n\nCtrl+Z puts the last one back")
             else:
                 self._message(f"No photos in\n{self.gallery.folder}")
             return
 
-        self.position_label.configure(text=f"{self.gallery.index + 1} of {total}")
+        self.position_label.configure(text=self._position())
         self.name_label.configure(text=current.name)
+        self._show_order()
         self.root.title(f"{current.name} ({self.gallery.index + 1} of {total}) — VortexView")
         self.settings.last_image = str(current)
 
@@ -470,9 +670,13 @@ class App:
             size = 0
         width, height = picture.original_size
         details = f"{width} × {height}   ·   " if width else ""
-        self.position_label.configure(
-            text=f"{self.gallery.index + 1} of {len(self.gallery.images)}   ·   {details}{_human_size(size)}"
-        )
+        self.position_label.configure(text=f"{self._position()}   ·   {details}{_human_size(size)}")
+
+    def _position(self) -> str:
+        """Mono and zero-padded, as Tawla prints its numbers: "007 / 120"."""
+        total = len(self.gallery.images)
+        text = f"{self.gallery.index + 1:0{len(str(total))}d} / {total}"
+        return text + ("   ·   shuffled" if self.gallery.shuffle_seed is not None else "")
 
     def _render(self, quick: bool = False) -> None:
         picture, view = self.picture, self.view
@@ -499,6 +703,7 @@ class App:
             shown = source.resize(size, resample, box=(box[0] * kx, box[1] * ky, box[2] * kx, box[3] * ky))
         self.photo = ImageTk.PhotoImage(shown)
         self.canvas.delete("all")
+        self._draw_ground()
         self.canvas.create_image(origin[0], origin[1], image=self.photo, anchor="nw")
         self.canvas.configure(cursor="fleur" if view.zoomed else "")
         self.zoom_button.configure(text=f"{view.percent}%" if view.zoomed else "Fit")
@@ -586,17 +791,36 @@ class App:
         self.canvas.configure(cursor="")
         self.zoom_button.configure(text="Fit")
 
-    def _message(self, text: str, error: bool = False, small: bool = False) -> None:
-        self.canvas.delete("all")
-        self.photo = None
+    def _draw_ground(self) -> None:
+        """The theme's haloed (and on GTX and Bamboo, textured) ground, behind everything."""
         width = max(self.canvas.winfo_width(), 1)
         height = max(self.canvas.winfo_height(), 1)
+        key = (width, height, self.p.id)
+        if self.ground_key != key:
+            self.ground = ImageTk.PhotoImage(theme.ground(width, height, self.p))
+            self.ground_key = key
+        self.canvas.create_image(0, 0, image=self.ground, anchor="nw", tags=("ground",))
+
+    def _message(self, text: str, error: bool = False, small: bool = False, welcome: bool = False) -> None:
+        p = self.p
+        self.canvas.delete("all")
+        self.photo = None
+        self._draw_ground()
+        width = max(self.canvas.winfo_width(), 1)
+        height = max(self.canvas.winfo_height(), 1)
+        y = height // 2
+        if welcome:
+            # The brand, large, above the way in.
+            self.welcome_art = [ImageTk.PhotoImage(theme.logo(72, p)), ImageTk.PhotoImage(theme.wordmark(p, 40))]
+            self.canvas.create_image(width // 2, y - 120, image=self.welcome_art[0])
+            self.canvas.create_image(width // 2, y - 50, image=self.welcome_art[1])
+            y += 20
         self.canvas.create_text(
             width // 2,
-            height // 2,
+            y,
             text=text,
-            fill=ERROR if error else (MUTED if small else TEXT),
-            font=("Segoe UI", 11 if small else 14),
+            fill=p.danger if error else (p.muted if small else p.text),
+            font=(UI_FONT, 11 if small else 14),
             justify="center",
             width=max(width - 80, 200),
         )
@@ -616,7 +840,7 @@ class App:
     # -- odds and ends ------------------------------------------------------
 
     def say(self, text: str, error: bool = False) -> None:
-        self.status.configure(text=text, foreground=ERROR if error else self.status_colour)
+        self.status.configure(text=text, foreground=self.p.danger if error else self.status_colour)
 
     def toggle_fullscreen(self) -> None:
         self.root.attributes("-fullscreen", not bool(self.root.attributes("-fullscreen")))
@@ -645,6 +869,9 @@ class App:
         self.loader.close()
         self.photo = None
         self.icon = None
+        self.ground = None
+        self.brand = []
+        self.welcome_art = []
         self.root.destroy()
 
 

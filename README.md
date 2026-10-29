@@ -74,7 +74,8 @@ Full documentation: [`vortexplorer/README.md`](vortexplorer/README.md).
 Also in this repository: **VortexView**, a photo viewer for sorting. Open a
 folder of photos, point at the folder you want them moved into, and press **M**:
 the photo you're on moves there and the next one appears. Up to nine
-destination folders on the number keys, and Ctrl+Z to undo.
+destination folders on the number keys, Ctrl+Z to undo, and a shuffle button.
+It shares VortexTawla's design and its seven themes.
 
 Download `VortexView.exe` from the
 [`vortexview-latest` release](https://github.com/JasonHaddad88/demo-repo/releases/tag/vortexview-latest),
@@ -87,7 +88,8 @@ Full documentation: [`vortexview/README.md`](vortexview/README.md).
 The same photo sorter on your phone. Open a folder of photos, choose the
 folders to move them into, and tap one: the photo you're on moves there and the
 next one slides in. Swipe between photos, pinch or double-tap to zoom, shuffle
-the order with one tap, and Undo puts a photo back.
+the order with one tap, and Undo puts a photo back. Same Vortex design and
+seven themes as VortexTawla.
 
 On your phone, download `VortexView.apk` from the
 [`vortexview-android-latest` release](https://github.com/JasonHaddad88/demo-repo/releases/tag/vortexview-android-latest).

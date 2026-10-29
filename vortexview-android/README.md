@@ -41,8 +41,32 @@ are separate apps.
 | Back (when zoomed) | Back to the whole photo |
 | **Shuffle** (⤮, top) | Show the photos in a random order; tap again for a new one |
 | Tap the photo | Hide or show the controls (full screen) |
+| 🎨 (top, on the first screen) or ⋮ → *Theme* | Choose one of the seven Vortex themes |
 | Press and hold a folder button | Change that folder, or remove it from the list |
 | ⋮ menu | Open another folder, read the folder again, or go back to name order |
+
+## Looks
+
+VortexView wears the Vortex family's design, the same as
+[VortexTawla](https://github.com/JasonHaddad88/vortex-tawla): a near-black
+ground with soft haloes, glass bars, the gradient Vortex mark and wordmark, and
+outlined, wide-spaced capital buttons that light up in the accent colour.
+
+Choose one with 🎨 on the first screen, or ⋮ → *Theme* later; it has Tawla's seven themes, colour for colour:
+
+| Theme | Looks like |
+| --- | --- |
+| **Vortex** | The original: black, purple and cyan |
+| **Nova** | Brushed silver under glass; the one light theme |
+| **Atrium** | Smoked glass lit from behind, electric cyan |
+| **GTX** | Carbon-fibre weave, gloss and racing red |
+| **Mono** | No colour at all: black, white and grey |
+| **Bamboo** | Leaf green and pale culm, ghost leaves behind |
+| **Qahwa** | The coffeehouse table: walnut and brass |
+
+The bar along the top shows how far through the folder you are, as a line in
+the theme's gradient, and each folder button counts the photos you've sent to
+it this session.
 
 ## Shuffle
 

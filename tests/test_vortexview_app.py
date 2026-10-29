@@ -126,7 +126,7 @@ class WindowTests(unittest.TestCase):
 
     def test_title_and_position(self):
         self.assertIn("IMG_1.jpg (1 of 3)", self.root.title())
-        self.assertIn("1 of 3", self.app.position_label.cget("text"))
+        self.assertIn("1 / 3", self.app.position_label.cget("text"))
         self.assertIn("1200 × 800", self.app.position_label.cget("text"))
 
     # -- what's on screen ------------------------------------------------
@@ -163,7 +163,8 @@ class WindowTests(unittest.TestCase):
         for _ in range(3):
             self.press("m")
         self.assertIsNone(self.app.gallery.current)
-        texts = [self.app.canvas.itemcget(item, "text") for item in self.app.canvas.find_all()]
+        canvas = self.app.canvas
+        texts = [canvas.itemcget(item, "text") for item in canvas.find_all() if canvas.type(item) == "text"]
         self.assertTrue(any("All done" in text for text in texts), texts)
 
     # -- zoom -------------------------------------------------------------
@@ -311,6 +312,74 @@ class WindowTests(unittest.TestCase):
         self.app.start()
         self.settle()
         self.assertEqual(self.app.gallery.current.name, "IMG_2.jpg", "should carry on where it left off")
+
+    def test_theme_and_shuffle_survive_a_restart(self):
+        self.app.apply_theme("bamboo")
+        self.press("s")
+        order = [p.name for p in self.app.gallery.images]
+        self.app.close()
+        self.app = None
+        self.root = None
+        gc.collect()
+        self.root = tk.Tk()
+        self.app = App(self.root, settings_file=self.settings_file)
+        self.app.start()
+        self.settle()
+        self.assertEqual(self.app.p.id, "bamboo")
+        self.assertEqual([p.name for p in self.app.gallery.images], order, "same shuffle after a restart")
+
+    # -- looks --------------------------------------------------------------
+
+    def test_starts_in_the_vortex_theme(self):
+        from vortexview import theme
+
+        self.assertEqual(self.app.p.id, "vortex")
+        self.assertEqual(self.app.canvas.cget("background"), theme.palette("vortex").bg)
+        self.assertEqual(self.app.canvas.find_withtag("ground") != (), True, "the haloed ground is drawn")
+
+    def test_switching_theme_repaints_keeps_the_photo_and_is_remembered(self):
+        from vortexview import theme
+
+        self.app.apply_theme("gtx")
+        self.settle()
+        self.assertEqual(self.app.canvas.cget("background"), theme.palette("gtx").bg)
+        self.assertEqual(self.app.theme_button.cget("text"), "GTX")
+        self.assertIsNotNone(self.app.photo, "the photo should still be on screen")
+        self.assertEqual(len(self.app.target_buttons), 2)
+        self.press("m")  # and everything still works
+        self.assertTrue((self.keep / "IMG_1.jpg").exists())
+        self.assertEqual(Settings.load(self.settings_file).theme, "gtx")
+
+    def test_every_theme_draws(self):
+        from vortexview import theme
+
+        for tid in theme.THEME_IDS:
+            self.app.apply_theme(tid)
+            self.settle()
+            self.assertEqual(self.app.p.id, tid)
+            self.assertTrue(self.app.canvas.find_withtag("ground"), tid)
+
+    # -- shuffle ----------------------------------------------------------------
+
+    def test_s_shuffles_and_n_goes_back_to_name_order(self):
+        for i in range(4, 12):
+            make_photo(self.photos / f"IMG_{i}.jpg", size=(200, 150))
+        self.app.reload()
+        names = [p.name for p in self.app.gallery.images]
+        self.press("s")
+        self.assertIsNotNone(self.app.gallery.shuffle_seed)
+        self.assertEqual(sorted(p.name for p in self.app.gallery.images), sorted(names))
+        self.assertEqual(self.app.gallery.index, 0)
+        self.assertIn("shuffled", self.app.position_label.cget("text"))
+        self.assertTrue(self.app.shuffle_button.lit)
+        self.assertEqual(self.app.name_order_button.winfo_manager(), "pack")
+        self.assertEqual(Settings.load(self.settings_file).shuffle_seed, self.app.gallery.shuffle_seed)
+        self.assertEqual(sorted(os.listdir(self.photos)), sorted(os.listdir(self.photos)), "files untouched")
+        self.press("n")
+        self.assertIsNone(self.app.gallery.shuffle_seed)
+        self.assertEqual([p.name for p in self.app.gallery.images], names)
+        self.assertFalse(self.app.shuffle_button.lit)
+        self.assertEqual(self.app.name_order_button.winfo_manager(), "")
 
     def test_screenshot(self):
         """Not an assertion: saves what the window looks like when asked to."""

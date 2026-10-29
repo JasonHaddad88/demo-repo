@@ -5,9 +5,11 @@ No GUI in here, so all of it can be tested without a screen.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
+import random
 import re
 import shutil
 import sys
@@ -62,6 +64,14 @@ def scan(folder: Path, extensions: set[str] | None = None) -> list[Path]:
     return sorted(photos, key=lambda p: natural_key(p.name))
 
 
+def shuffle_key(seed: int, name: str) -> int:
+    """A photo's place in a shuffle: from its name and the seed alone, so
+    moving photos out never reshuffles the rest, and the same seed deals the
+    same order again next time."""
+    digest = hashlib.blake2b(f"{seed}\0{name}".encode("utf-8"), digest_size=8).digest()
+    return int.from_bytes(digest, "big")
+
+
 def unique_destination(folder: Path, name: str) -> Path:
     """`photo.jpg`, or `photo (2).jpg` if that is taken — never overwrite."""
     candidate = folder / name
@@ -108,6 +118,32 @@ class Gallery:
         self.images: list[Path] = []
         self.index = 0
         self.history: list[Move] = []
+        # None for name order; otherwise the seed of the shuffle in force.
+        # It carries over to the next folder opened.
+        self.shuffle_seed: int | None = None
+
+    def _key(self, path: Path):
+        if self.shuffle_seed is None:
+            return natural_key(path.name)
+        return (shuffle_key(self.shuffle_seed, path.name), natural_key(path.name))
+
+    # -- order --------------------------------------------------------------
+
+    def shuffle(self, seed: int | None = None) -> int:
+        """Shows the photos in a new random order, from the top of it. Files
+        are never renamed: only the viewing order changes."""
+        self.shuffle_seed = seed if seed is not None else random.getrandbits(63)
+        self.images.sort(key=self._key)
+        self.index = 0
+        return self.shuffle_seed
+
+    def sort_by_name(self) -> None:
+        """Back to name order, staying on the photo you're looking at."""
+        current = self.current
+        self.shuffle_seed = None
+        self.images.sort(key=self._key)
+        if current is not None:
+            self.index = self.images.index(current)
 
     # -- opening ------------------------------------------------------------
 
@@ -120,7 +156,7 @@ class Gallery:
             folder, start = path, None
         else:
             raise MoveError(f"{path} doesn't exist")
-        images = scan(folder)
+        images = sorted(scan(folder), key=self._key)
         self.folder = folder
         self.images = images
         self.index = 0
@@ -135,7 +171,7 @@ class Gallery:
         if self.folder is None:
             return
         current = self.current
-        self.images = scan(self.folder)
+        self.images = sorted(scan(self.folder), key=self._key)
         if current is not None and current in self.images:
             self.index = self.images.index(current)
         else:
@@ -217,7 +253,9 @@ class Gallery:
         self.history.pop()
 
         if self.folder is not None and same_folder(back.parent, self.folder):
-            position = min(last.index, len(self.images))
+            # Where it belongs in the order now, which may not be the order it left.
+            key = self._key(back)
+            position = next((i for i, image in enumerate(self.images) if self._key(image) > key), len(self.images))
             self.images.insert(position, back)
             self.index = position
         return Move(last.destination, back, last.index)
@@ -243,6 +281,8 @@ class Settings:
     last_image: str = ""
     targets: list[str] = field(default_factory=list)
     geometry: str = ""
+    theme: str = "vortex"
+    shuffle_seed: int | None = None
 
     @classmethod
     def load(cls, path: Path | None = None) -> "Settings":
@@ -254,11 +294,16 @@ class Settings:
         if not isinstance(data, dict):
             return cls()
         targets = [str(t) for t in data.get("targets", []) if isinstance(t, str) and t][:MAX_TARGETS]
+        seed = data.get("shuffle_seed")
+        if not isinstance(seed, int) or isinstance(seed, bool):
+            seed = None
         return cls(
             last_folder=str(data.get("last_folder", "")),
             last_image=str(data.get("last_image", "")),
             targets=targets,
             geometry=str(data.get("geometry", "")),
+            theme=str(data.get("theme", "vortex")) or "vortex",
+            shuffle_seed=seed,
         )
 
     def save(self, path: Path | None = None) -> None:

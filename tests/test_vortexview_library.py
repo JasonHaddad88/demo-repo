@@ -204,11 +204,90 @@ class UndoTests(LibraryTestCase):
         self.assertEqual(self.names(), ["x.jpg"])
 
 
+class ShuffleTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.photos = Path(self.tmp.name) / "Camera"
+        self.keep = Path(self.tmp.name) / "Keepers"
+        self.keep.mkdir()
+        self.all = [f"IMG_{i}.jpg" for i in range(1, 41)]
+        for name in self.all:
+            touch(self.photos / name)
+        self.gallery = Gallery()
+        self.gallery.open(self.photos)
+
+    def names(self):
+        return [p.name for p in self.gallery.images]
+
+    def test_shuffle_changes_the_order_and_starts_at_the_top(self):
+        self.gallery.go(5)
+        self.gallery.shuffle(seed=1)
+        self.assertEqual(sorted(self.names()), sorted(self.all))
+        self.assertNotEqual(self.names(), self.all)
+        self.assertEqual(self.gallery.index, 0)
+        self.assertEqual(self.gallery.shuffle_seed, 1)
+
+    def test_same_seed_same_order(self):
+        self.gallery.shuffle(seed=7)
+        first = self.names()
+        other = Gallery()
+        other.shuffle_seed = 7
+        other.open(self.photos)
+        self.assertEqual(first, [p.name for p in other.images])
+        other.shuffle(seed=8)
+        self.assertNotEqual(first, [p.name for p in other.images])
+
+    def test_moving_and_undo_keep_the_shuffle(self):
+        self.gallery.shuffle(seed=3)
+        before = self.names()
+        self.gallery.go(4)
+        moving = self.gallery.current.name
+        self.gallery.move_current(self.keep)
+        self.assertEqual(self.names(), [n for n in before if n != moving])
+        self.assertEqual(self.gallery.current.name, before[5])
+        self.gallery.undo()
+        self.assertEqual(self.names(), before)
+        self.assertEqual(self.gallery.current.name, moving)
+
+    def test_new_photos_land_somewhere_and_the_rest_keep_order(self):
+        self.gallery.shuffle(seed=5)
+        before = self.names()
+        touch(self.photos / "IMG_new.jpg")
+        self.gallery.reload()
+        self.assertEqual([n for n in self.names() if n != "IMG_new.jpg"], before)
+        self.assertIn("IMG_new.jpg", self.names())
+
+    def test_back_to_name_order_stays_on_the_photo(self):
+        self.gallery.shuffle(seed=2)
+        self.gallery.go(3)
+        looking = self.gallery.current.name
+        self.gallery.sort_by_name()
+        self.assertEqual(self.names(), sorted(self.all, key=library.natural_key))
+        self.assertEqual(self.gallery.current.name, looking)
+        self.assertIsNone(self.gallery.shuffle_seed)
+
+    def test_every_position_is_reachable(self):
+        seen = set()
+        for seed in range(2000):
+            self.gallery.shuffle(seed=seed)
+            seen.add(self.names().index("IMG_1.jpg"))
+        self.assertEqual(len(seen), len(self.all))
+
+    def test_a_random_shuffle_gets_a_seed(self):
+        seed = self.gallery.shuffle()
+        self.assertIsInstance(seed, int)
+        self.assertEqual(self.gallery.shuffle_seed, seed)
+
+
 class SettingsTests(unittest.TestCase):
     def test_round_trip(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "nested" / "settings.json"
-            settings = Settings(last_folder="C:/Photos", targets=["C:/Keep", "D:/Rejects"], geometry="900x700+10+10")
+            settings = Settings(
+                last_folder="C:/Photos", targets=["C:/Keep", "D:/Rejects"], geometry="900x700+10+10",
+                theme="gtx", shuffle_seed=12345,
+            )
             settings.save(path)
             loaded = Settings.load(path)
             self.assertEqual(loaded, settings)
@@ -221,6 +300,9 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(Settings.load(broken), Settings())
             broken.write_text(json.dumps({"targets": [1, "", "C:/Ok"]}))
             self.assertEqual(Settings.load(broken).targets, ["C:/Ok"])
+            broken.write_text(json.dumps({"shuffle_seed": "nope", "theme": ""}))
+            self.assertIsNone(Settings.load(broken).shuffle_seed)
+            self.assertEqual(Settings.load(broken).theme, "vortex")
 
     def test_add_target_dedupes_and_caps(self):
         settings = Settings()
