@@ -142,7 +142,7 @@ class SortingTest {
 
         vm.setTarget(Uri.fromFile(keepers), null)
         waitFor("the Keepers button") { vm.state.targets.size == 1 }
-        compose.onNodeWithText("Move this photo to", ignoreCase = true).assertIsDisplayed()
+        compose.onNodeWithText("Move photo to", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithText("Keepers", ignoreCase = true).assertIsDisplayed()
         save("3-keepers-added")
 

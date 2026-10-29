@@ -509,9 +509,12 @@ private fun TargetPanel(
     onRemove: (Int) -> Unit,
 ) {
     val v = LocalVortex.current
+    // Solid, not glass: the buttons must read clearly over any photo.
     Column(
         Modifier
             .fillMaxWidth()
+            .background(v.bg)
+            .background(v.surface2)
             .glassBar(v, lineAtBottom = false)
             .windowInsetsPadding(WindowInsets.navigationBars)
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
@@ -529,7 +532,7 @@ private fun TargetPanel(
             )
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 12.dp)) {
-                SectionHead("Move this photo to", Modifier.weight(1f))
+                SectionHead("Move photo to", Modifier.weight(1f))
                 if (targets.size < MAX_TARGETS) {
                     VortexButton("Add folder", onClick = { onChoose(null) }, icon = Icons.Add)
                 }

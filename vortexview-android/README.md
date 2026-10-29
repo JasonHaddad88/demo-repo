@@ -27,7 +27,7 @@ are separate apps.
    and tap **Use this folder**, then **Allow**. Camera photos are usually in
    *DCIM › Camera*. SD cards and USB drives are in the picker's menu (☰).
 2. **Choose a folder to move photos into** with the button at the bottom. It
-   becomes a big button under *Move this photo to*. Add more with **+ Add folder**.
+   becomes a big button under *Move photo to*. Add more with **+ Add folder**.
 3. Look at each photo and **tap a folder's button** to move the photo into it,
    or **swipe** to leave it and go to the next one.
 
