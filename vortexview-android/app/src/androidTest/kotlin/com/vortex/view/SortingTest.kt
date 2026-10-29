@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
@@ -212,7 +213,9 @@ class SortingTest {
             val picker = compose.onNode(isDialog()).captureToImage().asAndroidBitmap()
             TestStorage().openOutputFile("vortexview-theme-picker.png").use { picker.compress(Bitmap.CompressFormat.PNG, 100, it) }
         }
-        compose.onNodeWithText("Done", ignoreCase = true).performClick()
+        // Every theme and the Done button must be reachable, even on a small screen.
+        compose.onNodeWithText("Qahwa").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Done", ignoreCase = true).assertIsDisplayed().performClick()
         // Nothing may be left open over the app: no dialog, no menu.
         waitFor("the theme picker and menu to close") { compose.onAllNodes(isRoot()).fetchSemanticsNodes().size == 1 }
 

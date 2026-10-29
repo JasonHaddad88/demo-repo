@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -461,31 +463,34 @@ fun ThemePicker(current: VortexPalette, onPick: (VortexPalette) -> Unit, onDismi
             padding = PaddingValues(start = 12.dp, end = 12.dp, top = 18.dp, bottom = 12.dp),
         ) {
             SectionHead("Theme", Modifier.padding(start = 8.dp, bottom = 10.dp))
-            Themes.all.forEachIndexed { number, theme ->
-                val chosen = theme.id == current.id
-                val shape = RoundedCornerShape(8.dp)
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp)
-                        .background(if (chosen) v.accentWash else Color.Transparent, shape)
-                        .border(1.dp, if (chosen) v.borderStrong else Color.Transparent, shape)
-                        .clickable(role = Role.RadioButton) { onPick(theme) }
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("%02d".format(number + 1), color = v.muted, fontFamily = MonoFont, fontSize = 12.sp)
-                    Spacer(Modifier.width(12.dp))
-                    VortexLogo(size = 26.dp, palette = theme, glow = false)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            theme.name,
-                            color = if (chosen) v.accent2 else v.text,
-                            fontSize = 15.sp,
-                            fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal,
-                        )
-                        Text(theme.tagline, color = v.muted, fontSize = 12.sp, maxLines = 2)
+            // The list scrolls on a small screen; Done stays in reach below it.
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                Themes.all.forEachIndexed { number, theme ->
+                    val chosen = theme.id == current.id
+                    val shape = RoundedCornerShape(8.dp)
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                            .background(if (chosen) v.accentWash else Color.Transparent, shape)
+                            .border(1.dp, if (chosen) v.borderStrong else Color.Transparent, shape)
+                            .clickable(role = Role.RadioButton) { onPick(theme) }
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("%02d".format(number + 1), color = v.muted, fontFamily = MonoFont, fontSize = 12.sp)
+                        Spacer(Modifier.width(12.dp))
+                        VortexLogo(size = 26.dp, palette = theme, glow = false)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                theme.name,
+                                color = if (chosen) v.accent2 else v.text,
+                                fontSize = 15.sp,
+                                fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal,
+                            )
+                            Text(theme.tagline, color = v.muted, fontSize = 12.sp, maxLines = 2)
+                        }
                     }
                 }
             }
