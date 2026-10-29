@@ -1,30 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The same picture as the Windows icon: a photo, and an arrow carrying it off.
-     Adaptive icons keep the middle 66 of these 108 units visible. -->
+<!-- The Vortex mark, as VortexTawla's maskable icon draws it: a dark core
+     inset 30% on each side. VortexView's own touch: a photo in the core,
+     a hill and a sun in the brand's purple and cyan. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- The photo: a frame with a hill and a sun. -->
     <path
-        android:fillColor="#C4BAFF"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="3.5"
-        android:pathData="M37,32 L67,32 Q70,32 70,35 L70,57 Q70,60 67,60 L37,60 Q34,60 34,57 L34,35 Q34,32 37,32 Z" />
+        android:fillColor="#06060A"
+        android:pathData="M41,32.4 L67,32.4 Q75.6,32.4 75.6,41 L75.6,67 Q75.6,75.6 67,75.6 L41,75.6 Q32.4,75.6 32.4,67 L32.4,41 Q32.4,32.4 41,32.4 Z" />
     <path
-        android:fillColor="#5B3DF5"
-        android:pathData="M36,58 L46,45.5 L53,53 L57.5,48.5 L68,58 Z" />
+        android:fillColor="#A855F7"
+        android:pathData="M38,68 L47.5,56 L54,63 L58.5,58.5 L70,68 Z" />
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M59.5,36.5 A3.25,3.25 0 1,1 59.5,43 A3.25,3.25 0 1,1 59.5,36.5 Z" />
-    <!-- The arrow carrying it off to the right. -->
-    <path
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="5"
-        android:strokeLineCap="round"
-        android:pathData="M38,71 L63,71" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M61,64 L73,71 L61,78 Z" />
+        android:fillColor="#67E8F9"
+        android:pathData="M62.5,41.5 A3.5,3.5 0 1,1 62.5,48.5 A3.5,3.5 0 1,1 62.5,41.5 Z" />
 </vector>

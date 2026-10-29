@@ -273,6 +273,7 @@ private fun PhotoView(
         }
     }
     LaunchedEffect(result) { onLoaded((result as? Loading.Ready)?.decoded) }
+    val v = LocalVortex.current
 
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (val loaded = result) {
@@ -283,14 +284,14 @@ private fun PhotoView(
                     delay(300)
                     show = true
                 }
-                if (show) CircularProgressIndicator(color = Color.White)
+                if (show) CircularProgressIndicator(color = v.accent)
             }
             is Loading.Failed -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Photos, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(64.dp))
+                Icon(Icons.Photos, null, tint = v.muted, modifier = Modifier.size(64.dp))
                 Spacer(Modifier.height(12.dp))
                 Text(
                     "Can't show ${photo.name}",
-                    color = Color.White,
+                    color = v.text,
                     style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 32.dp),
@@ -298,7 +299,7 @@ private fun PhotoView(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     "${loaded.reason}\nYou can still move it, or swipe past it.",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = v.muted,
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 32.dp),

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed icons (Android 13+): the mark as a ring with the photo inside. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5"
+        android:pathData="M41,32.4 L67,32.4 Q75.6,32.4 75.6,41 L75.6,67 Q75.6,75.6 67,75.6 L41,75.6 Q32.4,75.6 32.4,67 L32.4,41 Q32.4,32.4 41,32.4 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,68 L47.5,56 L54,63 L58.5,58.5 L70,68 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M62.5,41.5 A3.5,3.5 0 1,1 62.5,48.5 A3.5,3.5 0 1,1 62.5,41.5 Z" />
+</vector>

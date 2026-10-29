@@ -31,6 +31,11 @@ class Prefs(context: Context, name: String = "vortexview") {
             edit.apply()
         }
 
+    /** The Vortex theme's id; null until one is chosen. */
+    var theme: String?
+        get() = prefs.getString("theme", null)
+        set(value) = prefs.edit().putString("theme", value).apply()
+
     var lastPhoto: String?
         get() = prefs.getString("last_photo", null)
         set(value) = prefs.edit().putString("last_photo", value).apply()

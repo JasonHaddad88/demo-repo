@@ -16,6 +16,8 @@ import com.vortex.view.data.Places
 import com.vortex.view.data.Prefs
 import com.vortex.view.data.SafStorage
 import com.vortex.view.media.PhotoLoader
+import com.vortex.view.ui.Themes
+import com.vortex.view.ui.VortexPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -35,6 +37,8 @@ data class UiState(
     val canUndo: Boolean = false,
     val busy: Boolean = false,
     val shuffled: Boolean = false,
+    /** How many photos have gone into each folder this session, by folder id. */
+    val sent: Map<String, Int> = emptyMap(),
 ) {
     val current: Photo? get() = photos.getOrNull(index)
 }
@@ -63,6 +67,15 @@ class MainViewModel @JvmOverloads constructor(
 
     var state by mutableStateOf(UiState(targets = prefs.targets))
         private set
+
+    /** The Vortex theme, as chosen in the theme picker; remembered. */
+    var palette by mutableStateOf(Themes.byId(prefs.theme))
+        private set
+
+    fun setTheme(theme: VortexPalette) {
+        palette = theme
+        prefs.theme = theme.id
+    }
 
     private val _messages = MutableSharedFlow<Message>(extraBufferCapacity = 8)
     val messages: SharedFlow<Message> = _messages
@@ -143,12 +156,19 @@ class MainViewModel @JvmOverloads constructor(
         loader.forget(move.photo)
         val note = if (move.renamed) " as ${move.moved.name}" else ""
         val left = gallery.photos.size
+        state = state.copy(sent = state.sent + (target.id to (state.sent[target.id] ?: 0) + 1))
         say("Moved ${move.photo.name} → ${target.name}$note · $left left", action = Action.UNDO)
     }
 
     fun undo() = background {
         val move = gallery.undo()
-        if (move == null) say("Nothing to undo") else say("Put ${move.moved.name} back in ${move.to.name}")
+        if (move == null) {
+            say("Nothing to undo")
+        } else {
+            val count = (state.sent[move.from.id] ?: 0) - 1
+            state = state.copy(sent = if (count > 0) state.sent + (move.from.id to count) else state.sent - move.from.id)
+            say("Put ${move.moved.name} back in ${move.to.name}")
+        }
     }
 
     fun reload() = background { gallery.reload() }

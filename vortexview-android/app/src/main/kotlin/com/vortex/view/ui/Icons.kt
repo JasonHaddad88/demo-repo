@@ -68,6 +68,29 @@ object Icons {
         }
     }
 
+    /** A painter's palette: the theme picker. */
+    val Palette: ImageVector by lazy {
+        icon("Palette") {
+            stroked {
+                moveTo(12f, 3f)
+                curveTo(7f, 3f, 3f, 7f, 3f, 12f)
+                curveTo(3f, 17f, 7f, 21f, 12f, 21f)
+                curveTo(13.5f, 21f, 14f, 20f, 13.5f, 18.8f)
+                curveTo(13f, 17.5f, 13.8f, 16f, 15.5f, 16f)
+                lineTo(17f, 16f)
+                curveTo(19.5f, 16f, 21f, 14.5f, 21f, 12f)
+                curveTo(21f, 7f, 17f, 3f, 12f, 3f)
+                close()
+            }
+            filled {
+                dot(7.5f, 11f)
+                dot(10f, 7f)
+                dot(14.5f, 7f)
+                dot(17f, 11f)
+            }
+        }
+    }
+
     val Add: ImageVector by lazy {
         icon("Add") {
             stroked {

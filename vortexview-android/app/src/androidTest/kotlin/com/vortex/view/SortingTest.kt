@@ -21,6 +21,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.services.storage.TestStorage
 import com.vortex.view.data.Prefs
+import com.vortex.view.ui.Themes
 import com.vortex.view.ui.VortexTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -119,19 +120,25 @@ class SortingTest {
 
     @Test
     fun openSwipeMoveAndUndo() {
-        compose.onNodeWithText("Open a folder of photos").assertExists()
+        compose.onNodeWithText("Open a folder of photos", ignoreCase = true).assertIsDisplayed()
         save("1-welcome")
+        // The welcome screen in every theme.
+        for (theme in Themes.all) {
+            compose.runOnUiThread { vm.setTheme(theme) }
+            save("welcome-${theme.id}")
+        }
+        compose.runOnUiThread { vm.setTheme(Themes.Vortex) }
 
         vm.openFolder(Uri.fromFile(camera))
         waitFor("the folder to open") { vm.state.photos.size == 3 }
         waitForPhoto("red (IMG_1)", ::isRed)
-        compose.onNodeWithText("Choose a folder to move photos into").assertIsDisplayed()
+        compose.onNodeWithText("Choose a folder to move photos into", ignoreCase = true).assertIsDisplayed()
         save("2-folder-open")
 
         vm.setTarget(Uri.fromFile(keepers), null)
         waitFor("the Keepers button") { vm.state.targets.size == 1 }
-        compose.onNodeWithText("Move this photo to").assertIsDisplayed()
-        compose.onNodeWithText("Keepers").assertIsDisplayed()
+        compose.onNodeWithText("Move this photo to", ignoreCase = true).assertIsDisplayed()
+        compose.onNodeWithText("Keepers", ignoreCase = true).assertIsDisplayed()
         save("3-keepers-added")
 
         // Swiping must change the photo on screen, not just its name.
@@ -146,7 +153,7 @@ class SortingTest {
         waitForPhoto("green (IMG_2) again", ::isGreen)
 
         // Tap the folder button: IMG_2 moves, and IMG_3 takes its place.
-        compose.onNodeWithText("Keepers").performClick()
+        compose.onNodeWithText("Keepers", ignoreCase = true).performClick()
         waitFor("IMG_2 to be moved") { File(keepers, "IMG_2.jpg").exists() }
         assertFalse(File(camera, "IMG_2.jpg").exists())
         waitForPhoto("blue (IMG_3)", ::isBlue)
@@ -190,5 +197,25 @@ class SortingTest {
         compose.onNodeWithText("Back to name order").performClick()
         waitFor("name order") { !vm.state.shuffled }
         assertEquals(names, vm.state.photos.map { it.name })
+
+        // Themes: choose one by touch in the theme chooser...
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Theme: Vortex…").performClick()
+        compose.onNodeWithText("GTX").performClick()
+        waitFor("the GTX theme") { vm.palette.id == "gtx" }
+        compose.onNodeWithText("Done", ignoreCase = true).performClick()
+        compose.waitForIdle()
+
+        // ...then move a photo, so a folder shows its count, and see every theme.
+        compose.onRoot().performTouchInput { swipeLeft() }
+        waitFor("a move to make") { vm.state.index >= 1 }
+        compose.onNodeWithText("Keepers", ignoreCase = true).performClick()
+        waitFor("the move") { (vm.state.sent.values.firstOrNull() ?: 0) == 1 }
+        for (theme in Themes.all) {
+            compose.runOnUiThread { vm.setTheme(theme) }
+            save("viewer-${theme.id}")
+        }
+        val shown = centre()
+        assertTrue("a photo should still fill the middle", isRed(shown) || isGreen(shown) || isBlue(shown))
     }
 }
